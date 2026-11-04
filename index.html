@@ -1210,7 +1210,7 @@
       monthBanner: `${new Date().getMonth()+1} 月 · 少一点，做好一点`,
       hidden: [],
       todoCats: [...SEED_CATS],
-      _v: 4,
+      _v: 5,
     };
   }
 
@@ -1232,11 +1232,11 @@
       });
     }
     delete raw.weekItems;
-    // v8: undoned past todos roll to today; keep most recent rolledFrom for a faded week-day ghost
+    // v8/v9: undoned past todos roll to today; rolledFrom = original start day (set once, never overwrite)
     raw.todos.forEach(t => {
       if (t.done) return;
       if (!t.date || t.date >= t0) return;
-      t.rolledFrom = t.date;
+      if (!t.rolledFrom) t.rolledFrom = t.date;
       t.date = t0;
     });
     if (!raw.profile) raw.profile = { ...PROFILE_SEED };
@@ -1265,7 +1265,7 @@
     ["todos","notes","sparks","quotes","mottos","clips"].forEach(k => raw[k] = nonEmpty(raw[k]));
     raw.month = raw.month.filter(x => String(x.t || "").trim());
     raw.mind.forEach(sec => sec.items = nonEmpty(sec.items));
-    raw._v = 4;
+    raw._v = 5;
     return raw;
   }
 
@@ -1277,7 +1277,7 @@
       monthBanner: `${new Date().getMonth()+1} 月 · 少一点，做好一点`,
       hidden: [],
       todoCats: [...SEED_CATS],
-      _v: 4,
+      _v: 5,
     };
   }
 
