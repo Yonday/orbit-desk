@@ -786,8 +786,7 @@
   .clip-open:hover { background: #f0f0f2; color: var(--accent); }
   .clip .item-del { position: absolute; top: 4px; right: 4px; background: rgba(255,255,255,0.9); }
   @media (max-width: 899px) {
-    .media a.clip .meta, .clip .meta-row { display: none; }
-    .clip .thumb { height: 56px; min-height: 52px; border-radius: 6px; }
+    .media a.clip .meta { display: none; }
   }
   /* override old a.clip rules */
   .media a { display: none; }
@@ -803,9 +802,39 @@
 
   .toast.undo-mode .toast-picker { display: none !important; }
   .toast.undo-mode .chg { display: none; }
-  .toast .undo-btn { color: #7eb8ff; font-size: 12px; margin-left: auto; }
+  .toast .undo-btn { color: #7eb8ff; font-size: 12px; margin-left: -4px; }
+  .toast.undo-mode .undo-btn { margin-right: 2px; }
 
   .cat-h.editable { display: inline-block; }
+
+  /* v2b module hide / clip url */
+  .card[hidden] { display: none !important; }
+  .mid-duo:has(> .card[hidden]) { grid-template-columns: 1fr; }
+  .mod-add + .mod-del { margin-left: 0; }
+  .mod-del {
+    width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0;
+    color: var(--ink3); font-size: 14px; line-height: 1;
+    display: none; place-items: center;
+    opacity: 0; transition: opacity .15s var(--ease), background .15s;
+  }
+  @media (hover: hover) and (min-width: 900px) {
+    .mod-del { display: grid; }
+    .card:hover > h2 .mod-del, .card:hover .month-head .mod-del { opacity: 0.4; }
+    .mod-del:hover { opacity: 1 !important; background: #fee; color: #c62828; }
+  }
+  .clip-url {
+    display: none; padding: 0 8px 6px; font-size: 10.5px; color: var(--ink3);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .clip-url.editing { white-space: normal; word-break: break-all; color: var(--ink2); margin: 0 4px 4px; padding: 2px 4px; }
+  .clip:hover .clip-url, .clip:has(.editing) .clip-url { display: block; }
+  @media (max-width: 899px) {
+    .clip .meta-row { display: flex; padding: 3px 5px; }
+    .clip .meta { font-size: 10.5px; }
+    .clip-open { width: 18px; height: 18px; font-size: 11px; }
+    .clip-url { padding: 0 5px 4px; font-size: 9.5px; }
+    .clip .thumb { height: 44px; min-height: 40px; border-radius: 0; }
+  }
 
 </style>
 </head>
@@ -924,8 +953,8 @@
   <div class="toast" id="toast">
     <div class="toast-row">
       <span id="toastMsg"></span>
-      <button type="button" class="chg" id="toastChange">改</button>
       <button type="button" class="undo-btn" id="toastUndo" hidden>撤销</button>
+      <button type="button" class="chg" id="toastChange">改</button>
     </div>
     <div class="toast-picker">
       <button type="button" data-kind="todo">待办</button>
@@ -1004,6 +1033,17 @@
 
   const PROFILE_SEED = { name: "我的桌面", role: "Orbit Desk" };
 
+  const MODULES = {
+    todo:  { sec: "sec-todo",  name: "待办" },
+    clip:  { sec: "sec-clip",  name: "剪藏" },
+    month: { sec: "sec-month", name: "月计划" },
+    quote: { sec: "sec-quote", name: "提醒" },
+    mind:  { sec: "sec-mind",  name: "Mind" },
+    note:  { sec: "sec-note",  name: "小记" },
+    spark: { sec: "sec-spark", name: "灵感墙" },
+  };
+  const SEC_TO_MOD = Object.fromEntries(Object.entries(MODULES).map(([k, v]) => [v.sec, k]));
+
   const EMPTY_DEMO = new URLSearchParams(location.search).get("empty") === "1";
   let state = load();
   let lastId = null;
@@ -1046,6 +1086,7 @@
         items: s.items.map(t => ({ id: uid(), text: t }))
       })),
       monthBanner: `${new Date().getMonth()+1} 月 · 少一点，做好一点`,
+      hidden: [],
       _v: 2,
     };
   }
@@ -1073,9 +1114,14 @@
         s.items = s.items.map(it => typeof it === "string" ? { id: uid(), text: it } : (it.id ? it : { id: uid(), text: it.text || "" }));
       });
     }
+    if (!Array.isArray(raw.hidden)) raw.hidden = [];
     if (typeof raw.monthBanner !== "string") {
       raw.monthBanner = `${new Date().getMonth()+1} 月 · 少一点，做好一点`;
     }
+    const nonEmpty = a => a.filter(x => String(x.text ?? x.t ?? x.title ?? "").trim());
+    ["todos","notes","sparks","quotes","mottos","clips"].forEach(k => raw[k] = nonEmpty(raw[k]));
+    raw.month = raw.month.filter(x => String(x.t || "").trim());
+    raw.mind.forEach(sec => sec.items = nonEmpty(sec.items));
     raw._v = 2;
     return raw;
   }
@@ -1086,6 +1132,7 @@
       profile: { ...PROFILE_SEED },
       mottos: [], quotes: [], clips: [], mind: [],
       monthBanner: `${new Date().getMonth()+1} 月 · 少一点，做好一点`,
+      hidden: [],
       _v: 2,
     };
   }
@@ -1246,6 +1293,7 @@
           <button type="button" class="clip-open" data-href="${esc(c.href || "")}" aria-label="打开链接">↗</button>
           ${delBtn("clip", c.id)}
         </div>
+        <div class="clip-url editable" data-edit="clip-url" data-id="${c.id}">${esc(c.href || "")}</div>
       </div>`).join("");
   }
 
@@ -1302,32 +1350,38 @@
       </div>`).join("");
   }
 
+  let toastAction = null;
+  function toast({ msg, change = false, action = null, ms = 4200 }) {
+    const t = document.getElementById("toast");
+    t.classList.remove("picking");
+    t.classList.toggle("undo-mode", !change);
+    document.getElementById("toastMsg").textContent = msg;
+    document.getElementById("toastChange").hidden = !change;
+    const btn = document.getElementById("toastUndo");
+    toastAction = action;
+    btn.hidden = !action;
+    if (action) btn.textContent = action.label;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      t.classList.remove("show", "picking", "undo-mode");
+      toastAction = null; undoBag = null;
+    }, ms);
+  }
   function showToast(kind, id) {
     lastId = id;
     undoBag = null;
+    const mk = kind; // todo/note/spark share module keys
+    if (state.hidden.includes(mk)) {
+      toast({ msg: `${MODULES[mk].name}已收起 ·`, change: true, ms: 5000,
+        action: { label: "恢复", fn: () => { showModule(mk); const el = document.getElementById(MODULES[mk].sec); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); } } });
+      return;
+    }
     const map = { todo: "→ 今日待办", note: "→ 小记", spark: "→ 灵感" };
-    const toast = document.getElementById("toast");
-    toast.classList.remove("undo-mode", "picking");
-    document.getElementById("toastMsg").textContent = map[kind] || "→";
-    document.getElementById("toastChange").hidden = false;
-    document.getElementById("toastUndo").hidden = true;
-    toast.classList.add("show");
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toast.classList.remove("show", "picking", "undo-mode"), 4200);
+    toast({ msg: map[kind] || "→", change: true });
   }
-
   function showUndoToast() {
-    const toast = document.getElementById("toast");
-    toast.classList.add("show", "undo-mode");
-    toast.classList.remove("picking");
-    document.getElementById("toastMsg").textContent = "已删除 · 撤销";
-    document.getElementById("toastChange").hidden = true;
-    document.getElementById("toastUndo").hidden = false;
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => {
-      toast.classList.remove("show", "picking", "undo-mode");
-      undoBag = null;
-    }, 5000);
+    toast({ msg: "已删除 ·", ms: 5000, action: { label: "撤销", fn: () => { if (undoBag) restoreRemoved(undoBag); undoBag = null; } } });
   }
 
   function addItem(text, kind) {
@@ -1338,7 +1392,22 @@
     save(); paint(); showToast(kind, id);
   }
 
+  function applyHidden() {
+    Object.entries(MODULES).forEach(([k, m]) => {
+      const el = document.getElementById(m.sec);
+      if (el) el.hidden = state.hidden.includes(k);
+    });
+  }
+  function hideModule(k) {
+    if (!MODULES[k] || state.hidden.includes(k)) return false;
+    state.hidden.push(k); return true;
+  }
+  function showModule(k) {
+    state.hidden = state.hidden.filter(x => x !== k);
+    save(); applyHidden();
+  }
   function paint() {
+    applyHidden();
     renderProfile();
     renderQuotes();
     renderMonth();
@@ -1350,9 +1419,21 @@
   }
 
   /* —— edit —— */
+  function editKey(el) {
+    if (el.id) return "#" + CSS.escape(el.id);
+    let sel = `[data-edit="${el.dataset.edit}"]`;
+    if (el.dataset.id) sel += `[data-id="${CSS.escape(el.dataset.id)}"]`;
+    if (el.dataset.cat) sel += `[data-cat="${CSS.escape(el.dataset.cat)}"]`;
+    return sel;
+  }
   function beginEdit(el) {
     if (!el || el.classList.contains("editing")) return;
-    if (editingEl && editingEl !== el) commitEdit(true);
+    if (editingEl && editingEl !== el) {
+      const key = editKey(el);
+      commitEdit(true);
+      if (!el.isConnected) el = document.querySelector(key);
+      if (!el) return;
+    }
     editingEl = el;
     editOrig = el.textContent;
     el.contentEditable = "true";
@@ -1379,6 +1460,7 @@
     editingEl = null;
 
     if (!saveIt) {
+      if (el.dataset.new === "1") { deleteByRef(kind, id, el.dataset.sec); return; }
       el.textContent = editOrig;
       return;
     }
@@ -1417,6 +1499,9 @@
     } else if (kind === "motto") {
       const it = state.mottos.find(x => x.id === id);
       if (it) { if (!text) { deleteItem("motto", id); return; } it.text = text; }
+    } else if (kind === "clip-url") {
+      const it = state.clips.find(x => x.id === id);
+      if (it && text) it.href = /^[a-z][\w+.-]*:\/\//i.test(text) ? text : "https://" + text;
     } else if (kind === "clip") {
       const it = state.clips.find(x => x.id === id);
       if (it) { if (!text) { deleteItem("clip", id); return; } it.title = text; }
@@ -1444,7 +1529,7 @@
     }
     save();
     // avoid full repaint while focusing — light update counts
-    if (["todo","note","spark","month","quote","motto","clip","mind-item","mind-title","cat"].includes(kind)) {
+    if (["todo","note","spark","month","quote","motto","clip","clip-url","mind-item","mind-title","cat"].includes(kind)) {
       // repaint to sync structure; re-find not needed
       const selId = id;
       const selKind = kind;
@@ -1493,6 +1578,8 @@
     } else if (bag === "mind") {
       const i = state.mind.findIndex(x => x.id === id);
       if (i >= 0) { removed = state.mind.splice(i, 1)[0]; meta.index = i; }
+    } else if (bag === "module") {
+      if (hideModule(id)) removed = { key: id };
     } else if (bag === "link") {
       const list = getLinks();
       const i = list.findIndex(x => x.id === id);
@@ -1517,6 +1604,7 @@
       const sec = state.mind.find(s => s.id === meta.secId);
       if (sec) sec.items.splice(i, 0, removed);
     } else if (bag === "mind") state.mind.splice(i, 0, removed);
+    else if (bag === "module") { showModule(removed.key); }
     else if (bag === "link") {
       const list = getLinks();
       list.splice(i, 0, removed);
@@ -1598,10 +1686,10 @@
     document.getElementById("toast").classList.add("picking");
   });
   document.getElementById("toastUndo").addEventListener("click", () => {
-    if (!undoBag) return;
-    restoreRemoved(undoBag);
-    undoBag = null;
-    document.getElementById("toast").classList.remove("show", "undo-mode");
+    const a = toastAction; toastAction = null;
+    clearTimeout(toastTimer);
+    document.getElementById("toast").classList.remove("show", "undo-mode", "picking");
+    if (a) a.fn();
   });
   document.querySelector(".toast-picker").addEventListener("click", e => {
     const btn = e.target.closest("[data-kind]");
@@ -1648,6 +1736,8 @@
     }
     const jump = e.target.closest("[data-jump]");
     if (jump) {
+      const mk = SEC_TO_MOD[jump.dataset.jump];
+      if (mk && state.hidden.includes(mk)) showModule(mk);
       const el = document.getElementById(jump.dataset.jump);
       if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
@@ -1684,6 +1774,7 @@
 
   document.body.addEventListener("keydown", e => {
     if (!editingEl) return;
+    if (e.isComposing || e.keyCode === 229) return;
     if (e.key === "Enter") {
       e.preventDefault();
       commitEdit(true);
@@ -1703,40 +1794,45 @@
     }, 120);
   });
 
-  /* mobile swipe-left delete */
+  /* mobile swipe-left delete — direction-locked, 70px, spring back */
   (function bindSwipe() {
-    let startX = 0, startY = 0, row = null, dx = 0, active = false;
-    const threshold = 72;
+    const THRESHOLD = 70, LOCK = 10;
+    let startX = 0, startY = 0, row = null, dx = 0, mode = null; // null | "h" | "v"
+    const reset = r => { if (!r) return; r.classList.remove("swiping"); r.style.transform = ""; };
     document.body.addEventListener("touchstart", e => {
-      if (window.matchMedia("(min-width:900px)").matches) return;
+      if (window.matchMedia("(min-width:900px)").matches || e.touches.length !== 1) return;
       const t = e.target.closest(".swipeable");
       if (!t || e.target.closest(".check, .mod-add, .clip-open, .editable.editing")) return;
-      row = t; startX = e.touches[0].clientX; startY = e.touches[0].clientY; dx = 0; active = true;
-      row.classList.add("swiping");
+      row = t; startX = e.touches[0].clientX; startY = e.touches[0].clientY; dx = 0; mode = null;
     }, { passive: true });
     document.body.addEventListener("touchmove", e => {
-      if (!active || !row) return;
-      const x = e.touches[0].clientX, y = e.touches[0].clientY;
-      const adx = x - startX, ady = y - startY;
-      if (Math.abs(ady) > Math.abs(adx)) { active = false; row.style.transform = ""; row.classList.remove("swiping"); row = null; return; }
+      if (!row) return;
+      const adx = e.touches[0].clientX - startX, ady = e.touches[0].clientY - startY;
+      if (!mode) {
+        if (Math.abs(adx) < LOCK && Math.abs(ady) < LOCK) return;
+        // mostly-horizontal and leftward, else treat as scroll
+        mode = (Math.abs(adx) > Math.abs(ady) * 1.5 && adx < 0) ? "h" : "v";
+        if (mode === "v") { reset(row); row = null; return; }
+        row.classList.add("swiping");
+      }
       dx = Math.min(0, adx);
       row.style.transform = `translateX(${dx}px)`;
     }, { passive: true });
-    document.body.addEventListener("touchend", () => {
+    const end = cancel => {
       if (!row) return;
-      row.classList.remove("swiping");
-      if (dx < -threshold) {
-        const bag = row.dataset.bag;
-        const id = row.dataset.id;
-        const sec = row.dataset.sec;
-        row.classList.add("swipe-out");
-        const target = row;
+      const r = row; row = null;
+      if (!cancel && mode === "h" && dx <= -THRESHOLD) {
+        r.classList.remove("swiping");
+        r.classList.add("swipe-out");
+        const { bag, id, sec } = r.dataset;
         setTimeout(() => { if (bag) deleteItem(bag, id, sec); }, 180);
       } else {
-        row.style.transform = "";
+        reset(r); // spring back via .swipeable transition
       }
-      row = null; active = false; dx = 0;
-    });
+      mode = null; dx = 0;
+    };
+    document.body.addEventListener("touchend", () => end(false));
+    document.body.addEventListener("touchcancel", () => end(true));
   })();
 
   document.getElementById("dockSearch").addEventListener("keydown", e => {
@@ -1755,6 +1851,19 @@
     const apply = () => { inp.placeholder = matchMedia("(max-width:899px)").matches ? "搜" : full; };
     apply(); matchMedia("(max-width:899px)").addEventListener("change", apply);
   })();
+  Object.entries(MODULES).forEach(([k, m]) => {
+    const card = document.getElementById(m.sec);
+    const add = card && card.querySelector(".mod-add");
+    if (!add) return;
+    const del = document.createElement("button");
+    del.type = "button"; del.className = "mod-del";
+    del.dataset.del = "module"; del.dataset.id = k;
+    del.setAttribute("aria-label", "移除板块"); del.title = "移除板块";
+    del.textContent = "×";
+    add.after(del);
+    const head = add.closest("h2, .month-head");
+    if (head) { head.classList.add("swipeable"); head.dataset.bag = "module"; head.dataset.id = k; }
+  });
   greeting();
   paint();
 
