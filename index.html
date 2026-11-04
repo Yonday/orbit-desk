@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#f3f1f8" />
+<title>Orbit Desk</title>
+<style>
+  :root {
+    --bg: #f3f1f8;
+    --card: #ffffff;
+    --ink: #1d1d1f;
+    --ink2: #6e6e73;
+    --ink3: #aeaeb2;
+    --line: rgba(60,60,67,0.1);
+    --accent: #0071e3;
+    --tag-career: #e8def8; --tag-career-ink: #5b3cc4;
+    --tag-love: #ffd6e0; --tag-love-ink: #c2185b;
+    --tag-side: #ececec; --tag-side-ink: #555;
+    --tag-life: #d8f5e2; --tag-life-ink: #1b7a3d;
+    --tag-ai: #d6e4ff; --tag-ai-ink: #245bdb;
+    --tag-note: #ffe8cc; --tag-note-ink: #9a5b00;
+    --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.05);
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --dock-h: 48px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { min-height: 100%; }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input { font: inherit; color: inherit; border: none; background: none; }
+  button { cursor: pointer; }
+
+  .shell { max-width: 1180px; margin: 0 auto; padding: 0 16px calc(var(--dock-h) + 28px); }
+
+  .cover {
+    height: 140px; margin: 0 -12px;
+    background:
+      linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.30)),
+      url("./assets/cover.svg") center/cover no-repeat,
+      linear-gradient(120deg, #c9c3f2 0%, #e9c7e0 45%, #f6d9c4 100%);
+    position: relative;
+  }
+  @media (min-width: 900px) { .cover { height: 190px; border-radius: 0 0 4px 4px; margin: 0; } }
+  .cover-inner {
+    position: absolute; left: 16px; right: 16px; bottom: 14px;
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 12px;
+  }
+  .cover h1 { color: #fff; font-size: 28px; font-weight: 700; letter-spacing: -0.03em; text-shadow: 0 1px 8px rgba(0,0,0,0.25); }
+  .cover .sub { color: rgba(255,255,255,0.85); font-size: 12px; margin-top: 2px; }
+
+  .capture {
+    margin-top: -18px; position: relative; z-index: 2;
+    display: flex; gap: 8px; align-items: center;
+    background: var(--card); border-radius: 14px; padding: 6px 6px 6px 12px;
+    box-shadow: var(--shadow); border: 1px solid var(--line);
+  }
+  .capture input { flex: 1; min-width: 0; height: 36px; font-size: 14px; outline: none; }
+  .capture input::placeholder { color: var(--ink3); }
+  .capture .go {
+    width: 34px; height: 34px; border-radius: 10px; background: var(--accent); color: #fff;
+    display: grid; place-items: center; flex-shrink: 0;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    align-items: start;
+  }
+  /* mobile base — R19 sets commute row order */
+  @media (max-width: 899px) {
+    .grid > .col-mid { display: flex; flex-direction: column; gap: 8px; }
+    .grid > .col-mid #sec-month { grid-column: auto; grid-row: auto; }
+  }
+  @media (min-width: 900px) {
+    .grid { grid-template-columns: 260px 1fr 280px; align-items: start; }
+  }
+
+  .card {
+    background: var(--card); border-radius: 14px; padding: 14px;
+    box-shadow: var(--shadow); border: 1px solid var(--line);
+  }
+  .card + .card { margin-top: 14px; }
+  .card h2 {
+    font-size: 13px; font-weight: 600; color: var(--ink2);
+    margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+  }
+  .card h2 .count {
+    font-size: 11px; background: #f0f0f2; color: var(--ink2);
+    padding: 1px 7px; border-radius: 99px; font-weight: 500;
+  }
+
+  .profile { display: flex; gap: 10px; align-items: flex-start; }
+  .avatar {
+    overflow: hidden;
+  }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; display: block;
+  }
+  .avatar {
+    width: 48px; height: 48px; border-radius: 12px; flex-shrink: 0;
+    background: #e8e8ed; /* no gradient fake */
+    color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 18px;
+  }
+  .profile .name { font-size: 14px; font-weight: 650; }
+  .profile .role { font-size: 11px; color: var(--ink2); margin-top: 2px; }
+  .motto { margin-top: 10px; font-size: 12px; color: var(--ink2); line-height: 1.55; }
+  .motto li { list-style: none; padding: 2px 0; }
+  .motto li::before { content: "· "; color: var(--ink3); }
+
+  .fat-stub {
+    margin-top: 12px; padding: 10px 12px; border-radius: 10px;
+    background: #f7f7f9; border: 1px dashed var(--line);
+  }
+  .fat-stub .lab { font-size: 11px; font-weight: 650; color: var(--ink2); margin-bottom: 6px; }
+  .fat-stub .rows { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 12px; color: var(--ink); }
+  .fat-stub .rows b { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+  .quote {
+    border-radius: 10px; padding: 10px 12px; font-size: 12.5px; line-height: 1.55;
+    margin-bottom: 8px; border-left: 3px solid transparent;
+  }
+  .quote:last-child { margin-bottom: 0; }
+  .quote.pink { background: #ffe8ef; color: #8b2048; border-left-color: #f48fb1; }
+  .quote.blue { background: #e8f1ff; color: #1e4a8c; border-left-color: #90caf9; }
+  .quote.green { background: #e6f7ed; color: #1b5e35; border-left-color: #81c784; }
+  .quote.tan { background: #fff3e0; color: #7a4a12; border-left-color: #ffb74d; }
+
+  .month-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+  .month-head .title { font-size: 16px; font-weight: 700; letter-spacing: -0.02em; }
+  .month-head .desc { font-size: 11px; color: var(--ink3); margin-top: 2px; }
+  .tabs { display: flex; gap: 6px; margin: 8px 0 10px; }
+  .tab { font-size: 12px; padding: 4px 10px; border-radius: 8px; color: var(--ink2); background: #f2f2f4; }
+  .tab.on { background: #1d1d1f; color: #fff; }
+  .month-banner {
+    font-size: 12px; color: var(--ink2); background: #f4f2fa; border-radius: 8px;
+    padding: 8px 10px; margin-bottom: 8px; line-height: 1.45;
+  }
+  .group-label {
+    font-size: 12px; font-weight: 650; color: var(--ink2);
+    padding: 10px 0 6px; border-top: 1px solid var(--line); margin-top: 6px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .group-label:first-child { border-top: none; margin-top: 0; padding-top: 2px; }
+  .group-label .pill {
+    font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 5px;
+  }
+  .row {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 7px 4px; border-radius: 8px;
+  }
+  .row:hover { background: rgba(0,0,0,0.02); }
+  .row .ico {
+    width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0;
+    display: grid; place-items: center; font-size: 13px; background: #f4f4f6;
+  }
+  .row .body { flex: 1; min-width: 0; }
+  .row .t { font-size: 13px; font-weight: 500; line-height: 1.35; }
+  .row.done .t { color: var(--ink3); text-decoration: line-through; }
+  .row .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .tag { font-size: 10px; padding: 1px 6px; border-radius: 5px; font-weight: 500; }
+  .tag.career { background: var(--tag-career); color: var(--tag-career-ink); }
+  .tag.love { background: var(--tag-love); color: var(--tag-love-ink); }
+  .tag.side { background: var(--tag-side); color: var(--tag-side-ink); }
+  .tag.life { background: var(--tag-life); color: var(--tag-life-ink); }
+  .tag.ai { background: var(--tag-ai); color: var(--tag-ai-ink); }
+  .tag.note { background: var(--tag-note); color: var(--tag-note-ink); }
+  .check {
+    width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0; margin-top: 2px;
+    border: 1.5px solid #c7c7cc; display: grid; place-items: center;
+  }
+  .check.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .check.on::after { content: "✓"; font-size: 11px; font-weight: 700; }
+
+  .cat { margin-bottom: 12px; }
+  .cat:last-child { margin-bottom: 0; }
+  .cat-h { font-size: 13px; font-weight: 650; margin-bottom: 6px; }
+  .todo-item {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 5px 0; font-size: 13px; line-height: 1.4;
+  }
+  .todo-item.done .txt { text-decoration: line-through; color: var(--ink3); }
+  #todoCats { max-height: 168px; overflow-y: auto; overscroll-behavior: contain; }
+  #todoCats::-webkit-scrollbar { width: 3px; }
+  #todoCats::-webkit-scrollbar-thumb { background: #d0d0d4; border-radius: 2px; }
+
+  .media { display: grid; gap: 8px; margin-top: 4px; }
+  .media a {
+    display: block; border-radius: 10px; overflow: hidden; text-decoration: none; color: inherit;
+    border: 1px solid var(--line); background: #fafafa;
+  }
+  .media .thumb { height: 88px; min-height: 72px; background-size: cover; background-position: center; border-radius: 10px 10px 0 0; }
+  .media .meta { padding: 8px 10px; font-size: 12px; font-weight: 550; line-height: 1.35; }
+  .media .meta span { display: block; font-size: 10px; color: var(--ink3); font-weight: 400; margin-top: 2px; }
+
+  /* Mind secondary */
+  .mind-list { display: flex; flex-direction: column; gap: 6px; }
+  .mind-row {
+    border: 1px solid var(--line); border-radius: 10px; background: #fafafa;
+    overflow: hidden;
+  }
+  .mind-row summary {
+    list-style: none; cursor: pointer; padding: 10px 12px;
+    display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600;
+  }
+  .mind-row summary::-webkit-details-marker { display: none; }
+  .mind-row summary .chev { margin-left: auto; color: var(--ink3); font-size: 11px; transition: transform .15s; }
+  .mind-row[open] summary .chev { transform: rotate(90deg); }
+  .mind-row .mind-body { padding: 0 12px 12px; font-size: 12.5px; color: var(--ink2); line-height: 1.5; }
+  .mind-row .mind-body li { list-style: none; padding: 4px 0; border-top: 1px solid var(--line); }
+  .mind-row .mind-body li:first-child { border-top: none; }
+  .mind-tag {
+    display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 5px;
+    background: #efe8ff; color: #5b3cc4; margin-left: 6px; font-weight: 500;
+  }
+
+  /* slim Notion dock */
+  .dock {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+    padding: 6px 12px calc(6px + env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, transparent, rgba(243,241,248,0.92) 28%);
+    display: flex; gap: 8px; align-items: center; justify-content: center;
+  }
+  .dock-bar {
+    flex: 1; max-width: 520px; height: 40px;
+    background: rgba(255,255,255,0.92); backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--line); border-radius: 12px;
+    display: flex; align-items: center; gap: 6px; padding: 0 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+  }
+  .dock-bar .mods {
+    display: flex; gap: 2px; align-items: center; overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .dock-bar .mods::-webkit-scrollbar { display: none; }
+  .mod {
+    width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+    display: grid; place-items: center; font-size: 14px;
+    color: var(--ink2); position: relative;
+  }
+  .mod:hover, .mod.on { background: rgba(0,0,0,0.05); color: var(--ink); }
+  .mod .badge {
+    position: absolute; top: -2px; right: -2px;
+    min-width: 14px; height: 14px; padding: 0 3px;
+    background: #ff3b30; color: #fff; font-size: 9px; font-weight: 700;
+    border-radius: 99px; display: grid; place-items: center;
+  }
+  .dock-sep { width: 1px; height: 18px; background: var(--line); flex-shrink: 0; }
+  .dock-bar input { flex: 1; min-width: 60px; font-size: 13px; outline: none; height: 100%; }
+  .dock-bar input::placeholder { color: var(--ink3); }
+  .fab {
+    width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0;
+    background: #fff; border: 1px solid var(--line);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    display: grid; place-items: center; font-size: 18px; color: var(--ink);
+  }
+
+  .toast {
+    position: fixed; left: 50%; transform: translateX(-50%) translateY(12px);
+    bottom: calc(var(--dock-h) + 12px); z-index: 50;
+    background: rgba(30,30,32,0.92); color: #fff; border-radius: 12px;
+    padding: 10px 12px; font-size: 13px; opacity: 0; pointer-events: none;
+    transition: opacity .2s var(--ease), transform .2s var(--ease);
+    max-width: min(360px, calc(100% - 24px));
+    box-shadow: 0 8px 28px rgba(0,0,0,0.25);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+  .toast.picking { bottom: calc(var(--dock-h) + 48px); }
+  .toast-row { display: flex; align-items: center; gap: 8px; }
+  .toast-picker { display: none; gap: 6px; margin-top: 8px; }
+  .toast.picking .toast-picker { display: flex; }
+  .toast-picker button {
+    flex: 1; padding: 6px 0; border-radius: 8px; background: rgba(255,255,255,0.14);
+    font-size: 12px; color: #fff;
+  }
+  .toast-picker button:hover { background: rgba(255,255,255,0.24); }
+  .toast .chg { color: #7eb8ff; font-size: 12px; margin-left: auto; }
+
+
+  .links-sheet {
+    position: fixed; inset: 0; z-index: 90;
+    background: rgba(0,0,0,0.28);
+    display: grid; place-items: end center;
+    padding: 16px 16px calc(var(--dock-h) + 24px);
+  }
+  .links-sheet[hidden] { display: none !important; }
+  .links-card {
+    width: min(420px, 100%);
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(16px);
+    border-radius: 16px; border: 1px solid var(--line);
+    box-shadow: var(--shadow); padding: 14px;
+  }
+  .links-card header { display:flex; align-items:center; justify-content:space-between; margin-bottom: 8px; }
+  .links-card header strong { font-size: 14px; }
+  .links-card .ghost { font-size: 13px; color: var(--accent); padding: 4px 8px; }
+  .links-list { display:flex; flex-direction:column; gap:6px; }
+  .links-item {
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 12px 14px; border-radius: 12px;
+    background: #fafafa; border: 1px solid var(--line);
+    text-decoration: none; color: var(--ink); font-size: 14px; font-weight: 500;
+  }
+  .links-row { display:flex; align-items:center; gap:6px; }
+  .links-row .links-item { flex:1; min-width:0; }
+  .links-del {
+    width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+    color: var(--ink3); font-size: 16px; line-height: 1;
+  }
+  .links-del:hover { background: #f0f0f2; color: var(--ink); }
+  .links-add { display:flex; gap:6px; margin-top:10px; align-items:center; }
+  .links-add input {
+    flex:1; min-width:0; height:34px; padding:0 10px; border-radius:10px;
+    background:#f4f4f6; font-size:13px; outline:none;
+  }
+  .links-add button {
+    height:34px; padding:0 12px; border-radius:10px; flex-shrink:0;
+    background:var(--accent); color:#fff; font-size:13px; font-weight:600;
+  }
+
+
+  /* R16 restrained doorplate motion */
+  .dock-bar {
+    position: relative;
+    overflow: hidden;
+    transition: transform .18s var(--ease), opacity .18s var(--ease);
+  }
+  .dock-bar::after {
+    content: "";
+    position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+    background: rgba(0,113,227,0.42);
+    transform: scaleX(0); transform-origin: left center;
+    opacity: 0; pointer-events: none;
+  }
+  .dock.pressing .dock-bar {
+    transform: scale(0.98);
+    opacity: 0.92;
+  }
+  .dock.pressing .dock-bar::after {
+    opacity: 1;
+    transform: scaleX(1);
+    transition: transform .48s linear, opacity .1s linear;
+  }
+  .links-sheet {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s var(--ease);
+  }
+  .links-sheet.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .links-sheet[hidden] { display: none !important; opacity: 0; }
+  .links-card {
+    transform: translateY(14px);
+    transition: transform .2s var(--ease);
+  }
+  .links-sheet.open .links-card { transform: translateY(0); }
+  .links-row {
+    overflow: hidden;
+    max-height: 64px;
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity .18s var(--ease),
+      max-height .2s var(--ease),
+      margin .2s var(--ease),
+      transform .18s var(--ease);
+  }
+  .links-row.entering {
+    opacity: 0;
+    max-height: 0;
+    transform: translateY(6px);
+  }
+  .links-row.entering.in {
+    opacity: 1;
+    max-height: 64px;
+    transform: none;
+  }
+  .links-row.removing {
+    opacity: 0;
+    max-height: 0;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    transform: scale(0.98);
+    pointer-events: none;
+  }
+  .links-add input, .links-add button { height: 36px; }
+  @media (prefers-reduced-motion: reduce) {
+    .dock-bar,
+    .dock.pressing .dock-bar,
+    .dock-bar::after,
+    .dock.pressing .dock-bar::after,
+    .links-sheet,
+    .links-card,
+    .links-row {
+      transition: none !important;
+    }
+    .dock.pressing .dock-bar { transform: none; opacity: 1; }
+    .dock.pressing .dock-bar::after { opacity: 0; transform: scaleX(0); }
+    .links-card { transform: none; }
+    .links-row.entering { opacity: 1; max-height: 64px; transform: none; }
+  }
+
+  .foot { margin-top: 16px; font-size: 11px; color: var(--ink3); text-align: center; }
+  .section-jump { scroll-margin-top: 12px; }
+
+  @media (max-width: 899px) {
+    .row .tags { display: none; }
+    .group-label .pill { display: none; }
+  }
+
+  /* r11 — R20 overrides cover/dock */
+  @media (max-width: 899px) {
+    #sec-todo, #sec-clip { min-height: 0; }
+  }
+  /* r12 sticky capture subtle */
+  .capture { transition: box-shadow .25s var(--ease), transform .25s var(--ease); }
+  .capture:focus-within { box-shadow: 0 8px 28px rgba(0,113,227,0.18); transform: translateY(-1px); }
+  .mod img { transition: transform .2s var(--ease); }
+  .mod:active img { transform: scale(0.92); }
+  /* r13 empty calm one-liner */
+  .empty-line { color: var(--ink3); font-size: 12.5px; padding: 6px 0; }
+  
+  /* R17 wide density — desktop only; mobile 1fr 1fr untouched */
+  @media (min-width: 900px) {
+    .shell { max-width: 1280px; padding: 0 18px calc(var(--dock-h) + 20px); }
+    .cover { height: 160px; }
+    .capture { margin-top: -16px; }
+    .grid {
+      margin-top: 10px;
+      grid-template-columns: 252px minmax(0, 1fr) 272px;
+      gap: 8px;
+    }
+    .card { padding: 11px; border-radius: 12px; }
+    .card + .card { margin-top: 8px; }
+    .card h2 { margin-bottom: 7px; }
+    .profile { gap: 8px; }
+    .motto { margin-top: 7px; line-height: 1.45; }
+    .motto li { padding: 1px 0; }
+    .fat-stub { margin-top: 8px; padding: 7px 9px; }
+    .quote { padding: 7px 9px; margin-bottom: 5px; font-size: 12px; line-height: 1.45; }
+    .tabs { margin: 6px 0 8px; }
+    .month-banner { padding: 7px 9px; margin-bottom: 6px; }
+    .group-label { padding: 7px 0 4px; margin-top: 4px; }
+    .row { padding: 5px 2px; }
+    .cat { margin-bottom: 8px; }
+    .todo-item { padding: 4px 0; }
+    /* desktop: show more todos — lift mobile-only 168px clamp */
+    #todoCats { max-height: none; overflow: visible; }
+    .media { gap: 6px; margin-top: 2px; }
+    .media .thumb { height: 72px; min-height: 64px; }
+    .media .meta { padding: 6px 8px; }
+    .mind-list { gap: 5px; }
+    .mind-row summary { padding: 8px 10px; }
+    .mind-row .mind-body { padding: 0 10px 10px; }
+    .foot { margin-top: 12px; }
+  }
+  @media (min-width: 1180px) {
+    .grid {
+      grid-template-columns: 268px minmax(0, 1fr) 300px;
+      gap: 9px;
+    }
+  }
+
+  /* r13 hover reveal density on desktop */
+  @media (hover:hover) {
+    .row .tags { opacity: 0.55; transition: opacity .15s; }
+    .row:hover .tags { opacity: 1; }
+  }
+
+
+  /* R16 first-open door breath on real doorplate (.dock-bar) — no copy */
+  .dock-bar.breathe {
+    animation: doorBreath 1.15s var(--ease) 1;
+  }
+  @keyframes doorBreath {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    35% { opacity: 0.78; transform: scale(1.018); }
+    65% { opacity: 0.92; transform: scale(1.01); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .dock-bar.breathe { animation: none; }
+  }
+
+  /* R17 acceptance: left stack / mid duo / right fill */
+  .col-mid { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .col-mid > #sec-month { margin: 0; }
+  .mid-duo { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: start; }
+  .mid-duo > .card { margin-top: 0 !important; }
+  .avatar { background: #e8e8ed !important; }
+  .media a.clip {
+    display: block; border-radius: 10px; overflow: hidden;
+    border: 1px solid var(--line); background: #fafafa;
+    text-decoration: none; color: inherit;
+  }
+  .media a.clip .thumb { display: block; height: 78px; background-size: cover; background-position: center; }
+  .media a.clip .meta { display: block; padding: 6px 8px; font-size: 12px; font-weight: 550; line-height: 1.35; }
+  @media (min-width: 900px) {
+    .grid {
+      grid-template-columns: minmax(248px, 280px) minmax(0, 1fr) minmax(248px, 292px);
+      gap: 8px; align-items: start;
+    }
+    .media { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    #sec-note .todo-item, #sec-spark .todo-item { padding: 3px 0; font-size: 12px; }
+  }
+  @media (max-width: 899px) {
+    /* mid-duo dual kept — see R19 commute block */
+    .media { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  }
+
+
+  /* R18 empty/full */
+  .empty-line {
+    color: var(--ink3);
+    font-size: 13px;
+    padding: 18px 8px;
+    text-align: center;
+    letter-spacing: 0.02em;
+  }
+  .mid-duo .empty-line { padding: 28px 8px; }
+  #sec-month .empty-line { padding: 36px 8px; }
+  body.empty-demo .month-banner { opacity: 0.55; }
+  body.empty-demo #sec-mind details:not([open]) { opacity: 0.9; }
+
+  body.empty-demo #sec-mind .mind-list .empty-line {
+    padding: 22px 8px;
+    text-align: center;
+  }
+  body.empty-demo .fat-stub { display: none; }
+
+  /* R19 mobile module wall — commute density */
+  @media (max-width: 899px) {
+    :root { --dock-h: 44px; }
+    .shell { padding: 0 10px calc(var(--dock-h) + 18px); }
+    .cover { height: 96px; }
+    .cover h1 { font-size: 20px; letter-spacing: -0.02em; }
+    .capture { margin-top: -12px; padding: 8px 10px; gap: 8px; }
+    .capture input { font-size: 14px; }
+    .grid {
+      margin-top: 8px;
+      gap: 8px;
+      grid-template-columns: 1fr 1fr;
+    }
+    /* commute 30s: mid-duo (todo|clip) first */
+    .grid > .col-mid { grid-column: 1 / -1; grid-row: 1; gap: 8px; }
+    .grid > aside:first-of-type { grid-column: 1; grid-row: 2; }
+    .grid > aside:last-of-type { grid-column: 2; grid-row: 2; }
+    .card { padding: 8px 9px; border-radius: 10px; }
+    .card h2 { font-size: 12px; margin-bottom: 6px; }
+    .profile { gap: 8px; }
+    .profile .avatar { width: 36px; height: 36px; }
+    .profile .name { font-size: 13px; }
+    .profile .role { font-size: 10px; }
+    .motto { font-size: 10px; gap: 3px; margin-top: 6px; }
+    .motto li { line-height: 1.35; }
+    .fat-stub { margin-top: 6px; padding: 6px 7px; }
+    .fat-stub .lab { font-size: 10px; }
+    .fat-stub .rows { font-size: 11px; gap: 2px; }
+    #sec-quote .quote { font-size: 10.5px; padding: 6px 7px; margin-bottom: 5px; }
+    .month-head .title { font-size: 14px; }
+    .month-head .desc { display: none; }
+    .month-banner { font-size: 11px; padding: 6px 8px; margin-bottom: 6px; }
+    .tabs { gap: 4px; margin-bottom: 6px; }
+    .tab { font-size: 11px; padding: 4px 8px; }
+    /* 双列不假：待办|剪藏同排 */
+    .mid-duo { grid-template-columns: 1fr 1fr; gap: 6px; }
+    #sec-todo, #sec-clip { min-height: 0; }
+    #todoCats { max-height: 200px; } /* R19 todoCats commute */
+    .media { grid-template-columns: 1fr 1fr; gap: 4px; }
+    .media a.clip .thumb { height: 56px; min-height: 52px; border-radius: 6px; }
+    .media a.clip .meta { display: none; }
+    .row { padding: 5px 0; gap: 6px; }
+    .row .t { font-size: 12.5px; }
+    .row .ico { font-size: 12px; }
+    .empty-line { font-size: 12px; padding: 14px 4px; }
+    .mid-duo .empty-line { padding: 18px 4px; }
+    /* 瘦底栏不抢 */
+    .dock { padding: 4px 10px calc(4px + env(safe-area-inset-bottom)); gap: 6px;
+      background: linear-gradient(180deg, transparent, rgba(243,241,248,0.72) 40%); }
+    .dock-bar {
+      max-width: 100%;
+      height: 34px;
+      padding: 0 8px;
+      border-radius: 10px;
+      gap: 4px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+      background: rgba(255,255,255,0.88);
+    }
+    .dock-bar .mods { gap: 2px; }
+    .mod { width: 28px; height: 28px; font-size: 13px; }
+    .dock-sep { height: 14px; }
+    .dock-bar input { font-size: 12px; min-width: 48px; }
+    .fab {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      font-size: 15px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    /* commute: stack note/spark under mid, keep dual top */
+    .grid > aside:last-of-type {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 0;
+    }
+  }
+
+
+  /* R19 mid dual — todo|clip first, month not owning mid */
+  @media (min-width: 900px) {
+    .col-mid { gap: 10px; }
+    .mid-duo {
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      align-items: stretch;
+    }
+    .mid-duo > .card {
+      min-height: 280px;
+      height: 100%;
+    }
+    #sec-todo #todoCats {
+      max-height: none;
+      overflow: visible;
+    }
+    #sec-month.col-main {
+      /* demote: no longer the mid hero */
+      padding: 12px 14px;
+    }
+    #sec-month .month-head .desc { font-size: 12px; opacity: 0.75; }
+    #sec-month .month-banner { margin-bottom: 8px; }
+  }
+
+
+  /* R20 wake pack — commute empty/full last pass */
+  @media (max-width: 899px) {
+    :root { --dock-h: 40px; }
+    .cover { height: 84px; }
+    .cover h1 { font-size: 20px; }
+    .cover .sub { font-size: 11px; }
+    .capture { margin-top: -10px; padding: 5px 5px 5px 10px; }
+    .capture input { height: 30px; font-size: 13px; }
+    .capture .go { width: 28px; height: 28px; border-radius: 8px; }
+    /* first fold = capture + mid-duo; month compact */
+    #sec-month .tabs { display: none; }
+    #sec-month .month-banner {
+      font-size: 10.5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+    #sec-month #monthList { max-height: 140px; overflow: auto; }
+    .mid-duo { gap: 6px; }
+    .mid-duo > .card { min-height: 152px; padding: 8px; }
+    #todoCats { max-height: 152px; overflow: auto; }
+    /* dock even slimmer — no steal */
+    .dock { padding: 3px 8px calc(3px + env(safe-area-inset-bottom)); gap: 5px;
+      background: linear-gradient(180deg, transparent, rgba(243,241,248,0.65) 42%); }
+    .dock-bar { height: 30px; border-radius: 10px; padding: 0 6px; box-shadow: 0 1px 8px rgba(0,0,0,0.035); }
+    .mod { width: 24px; height: 24px; font-size: 12px; border-radius: 6px; }
+    .dock-sep { height: 12px; }
+    .dock-bar input { font-size: 11px; min-width: 40px; }
+    .fab { width: 30px; height: 30px; border-radius: 9px; font-size: 13px; box-shadow: 0 1px 8px rgba(0,0,0,0.04); }
+  }
+  body.empty-demo #sec-quote { display: none; }
+  body.empty-demo #sec-month .month-banner { opacity: 0.55; }
+  body.empty-demo .mid-duo > .card { min-height: 120px; }
+  body.empty-demo .mod .badge { display: none !important; }
+  /* no seed counts on empty chrome */
+  body.empty-demo #todoCount,
+  body.empty-demo #noteCount,
+  body.empty-demo #sparkCount { display: none; }
+
+</style>
+</head>
+<body>
+  <div class="shell">
+    <div class="cover span-2">
+      <div class="cover-inner">
+        <div>
+          <h1>Home</h1>
+          <div class="sub" id="greetingSub">Orbit Desk · 先看今日</div>
+        </div>
+      </div>
+    </div>
+
+    <form class="capture span-2" id="captureForm">
+      <input id="captureInput" autocomplete="off" maxlength="500" placeholder="记下" />
+      <button class="go" type="submit" aria-label="发送">↑</button>
+    </form>
+
+    <div class="grid">
+      <aside>
+        <div class="card">
+          <div class="profile">
+            <div class="avatar"><img src="./assets/avatar.svg" alt="" /></div>
+            <div>
+              <div class="name">我的桌面</div>
+              <div class="role">Orbit Desk</div>
+            </div>
+          </div>
+          <ul class="motto">
+            <li>先记下，再整理</li>
+            <li>一次只做一件事</li>
+          </ul>
+        </div>
+        <div class="card section-jump" id="sec-quote">
+          <h2>Remind · 提醒</h2>
+          <div class="quote tan">少一点，但做好一点。</div>
+          <div class="quote pink">先开始，再完美。</div>
+          <div class="quote blue">今天的小事，就是明天的底气。</div>
+          <div class="quote green">记下来，脑子就空出来了。</div>
+        </div>
+      </aside>
+
+      <div class="col-mid">
+        <div class="mid-duo">
+          <div class="card section-jump" id="sec-todo">
+            <h2>今日待办 <span class="count" id="todoCount">0</span></h2>
+            <div id="todoCats"></div>
+          </div>
+          <div class="card section-jump" id="sec-clip">
+            <h2>灵感 / 视频剪藏</h2>
+            <div class="media" id="clipList"></div>
+          </div>
+        </div>
+        <main class="card section-jump col-main" id="sec-month">
+          <div class="month-head">
+            <div>
+              <div class="title">Monthly Plan</div>
+            </div>
+          </div>
+          <div class="tabs">
+            <button type="button" class="tab on">2026年</button>
+            <button type="button" class="tab">2025年</button>
+          </div>
+          <div class="month-banner" id="monthBanner">本月 · 少一点，做好一点</div>
+          <div id="monthList"></div>
+        </main>
+      </div>
+
+      <aside>
+        <div class="card section-jump" id="sec-mind">
+          <h2>Mind · 二级</h2>
+          <div class="mind-list">
+            <details class="mind-row" open>
+              <summary>📜 喜欢的摘录 <span class="mind-tag">3</span><span class="chev">›</span></summary>
+              <div class="mind-body">
+                <ul>
+                  <li>慢慢来，比较快。</li>
+                  <li>把复杂留给自己，把简单留给用的人。</li>
+                  <li>好的工具，用完就忘了它在。</li>
+                </ul>
+              </div>
+            </details>
+            <details class="mind-row" open>
+              <summary>💭 Future <span class="mind-tag">3</span><span class="chev">›</span></summary>
+              <div class="mind-body">
+                <ul>
+                  <li>学习 · 一门新技能</li>
+                  <li>工作 · 一个小项目上线</li>
+                  <li>生活 · 一次短途旅行</li>
+                </ul>
+              </div>
+            </details>
+            <details class="mind-row" open>
+              <summary>🫶 热爱清单 <span class="mind-tag">4</span><span class="chev">›</span></summary>
+              <div class="mind-body">
+                <ul>
+                  <li>📚 读完一本书 · Done</li>
+                  <li>🏃 每周跑步两次 · In progress</li>
+                  <li>🎧 整理一个歌单 · Done</li>
+                  <li>🌱 养活一盆绿植 · In progress</li>
+                </ul>
+              </div>
+            </details>
+          </div>
+        </div>
+        <div class="card section-jump" id="sec-note">
+          <h2>小记 <span class="count" id="noteCount">0</span></h2>
+          <div id="noteList"></div>
+        </div>
+        <div class="card section-jump" id="sec-spark">
+          <h2>灵感墙 <span class="count" id="sparkCount">0</span></h2>
+          <div id="sparkList"></div>
+        </div>
+      </aside>
+    </div>
+
+  </div>
+
+  <div class="dock">
+    <div class="dock-bar">
+      <div class="mods" id="mods">
+        <button type="button" class="mod" data-jump="sec-todo" title="今日待办">✅</button>
+        <button type="button" class="mod" data-jump="sec-month" title="月计划">📅</button>
+        <button type="button" class="mod" data-jump="sec-note" title="小记">📝<span class="badge" id="bNote" hidden>0</span></button>
+        <button type="button" class="mod" data-jump="sec-spark" title="灵感">✨<span class="badge" id="bSpark" hidden>0</span></button>
+        <button type="button" class="mod" data-jump="sec-clip" title="剪藏">📎</button>
+        <button type="button" class="mod" data-jump="sec-mind" title="Mind">🧠</button>
+      </div>
+      <div class="dock-sep"></div>
+      <input id="dockSearch" placeholder="搜待办 / 小记 / 门牌" />
+    </div>
+    <button type="button" class="fab" id="fabAdd" title="新建">✎</button>
+  </div>
+
+
+  <div class="links-sheet" id="linksSheet" hidden>
+    <div class="links-card" role="dialog" aria-label="外链">
+      <header><strong>外链整理</strong><button type="button" class="ghost" id="linksClose">完成</button></header>
+      <div class="links-list" id="linksList"></div>
+      <div class="links-add">
+        <input id="linkName" placeholder="名称" autocomplete="off" />
+        <input id="linkUrl" placeholder="https://" autocomplete="off" />
+        <button type="button" id="linkAdd">加</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">
+    <div class="toast-row">
+      <span id="toastMsg"></span>
+      <button type="button" class="chg" id="toastChange">改</button>
+    </div>
+    <div class="toast-picker">
+      <button type="button" data-kind="todo">待办</button>
+      <button type="button" data-kind="note">小记</button>
+      <button type="button" data-kind="spark">灵感</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const KEY = "personal-hub-v9";
+  const FEW = "personal-hub-fewshot-v9";
+
+  const SECTIONS = [
+    { key: "career", label: "事业", pill: "career", ico: "💼" },
+    { key: "love", label: "热爱", pill: "love", ico: "🫶" },
+    { key: "side", label: "副业", pill: "side", ico: "🎬" },
+    { key: "life", label: "生活", pill: "life", ico: "🌿" },
+  ];
+
+  const MONTH_SEED = [
+    { sec: "career", ico: "💻", t: "完成一个小项目的第一版", tags: [["career","事业"]], done: false },
+    { sec: "career", ico: "📐", t: "整理工作笔记结构", tags: [["career","事业"],["ai","AI/学习"]], done: true },
+    { sec: "career", ico: "⚙️", t: "试一个新的效率工具", tags: [["career","事业"],["ai","AI/学习"]], done: false },
+    { sec: "love", ico: "📚", t: "读完一本书", tags: [["love","热爱"],["note","已笔记"]], done: false },
+    { sec: "love", ico: "🎧", t: "整理一个歌单", tags: [["love","热爱"]], done: true },
+    { sec: "side", ico: "✍️", t: "写一篇短文", tags: [["side","副业"],["ai","创造"]], done: false },
+    { sec: "life", ico: "🏃", t: "每周运动两次", tags: [["life","生活"]], done: false },
+    { sec: "life", ico: "🧹", t: "收拾一次书桌", tags: [["life","生活"]], done: false },
+  ];
+
+  const TODO_SEED = {
+    "💻 工作": ["回复两封邮件", "整理本周计划", "准备周会要点"],
+    "🌟 生活": ["晚间散步 30 分", "买牛奶", "给植物浇水"],
+    "🤖 学习": ["读一章书", "试一个新工具"],
+  };
+
+  const CLIPS = [
+    { title: "Calm", thumb: "./assets/clip-a.svg", href: "https://www.pinterest.com/search/pins/?q=calm" },
+    { title: "Desk", thumb: "./assets/clip-b.svg", href: "https://www.pinterest.com/search/pins/?q=desk%20setup%20minimal" },
+    { title: "Dusk", thumb: "./assets/clip-c.svg", href: "https://www.pinterest.com/search/pins/?q=dusk" },
+    { title: "Light", thumb: "./assets/clip-d.svg", href: "https://www.pinterest.com/search/pins/?q=light" },
+  ];
+
+  const LINKS_KEY = "personal-hub-links-v1";
+  const LINKS_SEED = [
+    { name: "Notion", url: "https://www.notion.so/" },
+    { name: "Pinterest", url: "https://www.pinterest.com/" },
+    { name: "GitHub", url: "https://github.com/" },
+  ];
+
+  const EMPTY_DEMO = new URLSearchParams(location.search).get("empty") === "1";
+  let state = load();
+  let lastId = null;
+  let toastTimer = null;
+
+  function uid() { return Math.random().toString(36).slice(2, 10); }
+
+  function load() {
+    if (EMPTY_DEMO) {
+      return { todos: [], notes: [], sparks: [], month: [] };
+    }
+    try {
+      const raw = JSON.parse(localStorage.getItem(KEY) || "null");
+      if (raw && Array.isArray(raw.todos) && Array.isArray(raw.month)) return raw;
+    } catch {}
+    const todos = [];
+    Object.entries(TODO_SEED).forEach(([cat, items]) => {
+      items.forEach(t => todos.push({ id: uid(), text: t, cat, done: false, kind: "todo" }));
+    });
+    return {
+      todos,
+      notes: [
+        { id: uid(), text: "https://www.notion.so 晚点细看", kind: "note" },
+        { id: uid(), text: "会议纪要：只留决策和负责人", kind: "note" },
+        { id: uid(), text: "地铁上听到一句话，莫名戳中", kind: "note" },
+      ],
+      sparks: [
+        { id: uid(), text: "要不要把书桌挪到窗边", kind: "spark" },
+        { id: uid(), text: "突然想养一盆慢的绿植", kind: "spark" },
+        { id: uid(), text: "周末去哪玩？顺便买票", kind: "spark" },
+        { id: uid(), text: "🔥", kind: "spark" },
+      ],
+      month: MONTH_SEED.map(x => ({ ...x, id: uid() })),
+    };
+  }
+
+  function save() { if (EMPTY_DEMO) return; localStorage.setItem(KEY, JSON.stringify(state)); }
+
+  function classify(raw) {
+    raw = String(raw || "").trim();
+    const t = raw.toLowerCase();
+    let few = {};
+    try { few = JSON.parse(localStorage.getItem(FEW) || "{}"); } catch {}
+    if (few[raw]) return few[raw];
+    // R15 sticky: URL / ? / 买 priority; trailing date/顺便 keep primary bucket
+    if (/https?:\/\//i.test(raw) || /\bwww\./i.test(t) || /\b[\w-]+\.(com|cn|io|app|dev|net|org|pro|me|co)(\/\S*)?\b/i.test(raw)) return "note";
+    if (/\p{Extended_Pictographic}/u.test(raw) && /^[\p{Extended_Pictographic}\p{Emoji_Presentation}\uFE0F\s]+$/u.test(raw)) return "spark";
+    if (/[？?]/.test(raw)) return "spark";
+    if (/^(要不要|要不要去|去不去|要不要试试)/.test(raw) || /去哪|怎么办|什么好|好不好/.test(raw)) return "spark";
+    if (/记得买/.test(raw) || /买票|买菜|买咖啡|买牛奶/.test(raw) || /^(买|要买|去买|顺便买)/.test(raw) || /(^|[\s，,])买/.test(raw)) return "todo";
+    if (/明天|后天|今晚|下周/.test(raw) && /(看|做|交|写|回|处理)/.test(raw) && !/[？?]/.test(raw)) return "todo";
+    return "todo";
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
+  }
+
+  function greeting() {
+    const h = new Date().getHours();
+    let g = "你好";
+    if (h < 5) g = "夜深了";
+    else if (h < 11) g = "早上好";
+    else if (h < 14) g = "中午好";
+    else if (h < 18) g = "下午好";
+    else g = "晚上好";
+    document.getElementById("greetingSub").textContent = `Orbit Desk · ${g} · 先看今日`;
+  }
+
+  function emptyLine() {
+    return '<div class="empty-line">今天还没写</div>';
+  }
+
+  function paintEmptyChrome() {
+    if (!EMPTY_DEMO) return;
+    const mind = document.querySelector("#sec-mind .mind-list");
+    if (mind) mind.innerHTML = emptyLine();
+    // month banner stays; empty modules share one line via emptyLine()
+  }
+
+  function renderMonth() {
+    const el = document.getElementById("monthList");
+    el.innerHTML = SECTIONS.map(sec => {
+      const items = state.month.filter(it => it.sec === sec.key);
+      if (!items.length) return "";
+      return `
+        <div class="group-label">${sec.ico} ${sec.label} <span class="pill tag ${sec.pill}">${sec.label}</span></div>
+        ${items.map(it => `
+          <div class="row ${it.done ? "done" : ""}" data-id="${it.id}">
+            <div class="ico">${it.ico || "•"}</div>
+            <div class="body">
+              <div class="t">${esc(it.t)}</div>
+              <div class="tags">${(it.tags||[]).map(([k,l]) => `<span class="tag ${k}">${esc(l)}</span>`).join("")}</div>
+            </div>
+            <button type="button" class="check ${it.done ? "on" : ""}" data-month="1" aria-label="完成"></button>
+          </div>`).join("")}`;
+    }).join("") || emptyLine();
+  }
+
+  function renderTodos() {
+    const cats = {};
+    state.todos.forEach(t => {
+      const c = t.cat || "📌 收件";
+      (cats[c] = cats[c] || []).push(t);
+    });
+    const todoHtml = Object.keys(cats).map(c => `
+      <div class="cat">
+        <div class="cat-h">${esc(c)}</div>
+        ${cats[c].map(t => `
+          <div class="todo-item ${t.done ? "done" : ""}" data-id="${t.id}">
+            <button type="button" class="check ${t.done ? "on" : ""}" data-todo="1"></button>
+            <div class="txt">${esc(t.text)}</div>
+          </div>`).join("")}
+      </div>`).join("");
+    document.getElementById("todoCats").innerHTML = todoHtml || emptyLine();
+    document.getElementById("todoCount").textContent = state.todos.filter(t => !t.done).length;
+  }
+
+  function renderNotesSparks() {
+    document.getElementById("noteList").innerHTML = state.notes.map(n =>
+      `<div class="todo-item" style="font-size:12.5px">${esc(n.text)}</div>`).join("") || emptyLine();
+    document.getElementById("sparkList").innerHTML = state.sparks.map(n =>
+      `<div class="todo-item" style="font-size:12.5px">${esc(n.text)}</div>`).join("") || emptyLine();
+    document.getElementById("noteCount").textContent = state.notes.length;
+    document.getElementById("sparkCount").textContent = state.sparks.length;
+    const bn = document.getElementById("bNote"), bs = document.getElementById("bSpark");
+    bn.hidden = !state.notes.length; bn.textContent = Math.min(state.notes.length, 9);
+    bs.hidden = !state.sparks.length; bs.textContent = Math.min(state.sparks.length, 9);
+  }
+
+  function loadLinks() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(LINKS_KEY) || "null");
+      if (Array.isArray(raw)) return raw;
+    } catch {}
+    return LINKS_SEED.map(x => ({ ...x }));
+  }
+  function saveLinks(list) { localStorage.setItem(LINKS_KEY, JSON.stringify(list)); }
+  function renderLinks() {
+    const list = loadLinks();
+    const el = document.getElementById("linksList");
+    if (!el) return;
+    el.innerHTML = list.map((L, i) => `
+      <div class="links-row">
+        <a class="links-item" href="${esc(L.url)}" target="_blank" rel="noopener"><span>${esc(L.name)}</span><span>↗</span></a>
+        <button type="button" class="links-del" data-i="${i}" aria-label="删">×</button>
+      </div>`).join("");
+  }
+
+  function renderClips() {
+    const el = document.getElementById("clipList");
+    if (!el) return;
+    if (EMPTY_DEMO) { el.innerHTML = emptyLine(); return; }
+    el.innerHTML = CLIPS.map(c => `
+      <a class="clip" href="${esc(c.href)}" target="_blank" rel="noopener">
+        <span class="thumb" style="background-image:url(${esc(c.thumb)})"></span>
+        <span class="meta">${esc(c.title||"")}</span>
+      </a>`).join("");
+  }
+
+  function showToast(kind, id) {
+    lastId = id;
+    const map = { todo: "→ 今日待办", note: "→ 小记", spark: "→ 灵感" };
+    document.getElementById("toastMsg").textContent = map[kind] || "→";
+    const toast = document.getElementById("toast");
+    toast.classList.add("show");
+    toast.classList.remove("picking");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove("show", "picking"), 4200);
+  }
+
+  function addItem(text, kind) {
+    const id = uid();
+    if (kind === "todo") state.todos.unshift({ id, text, cat: "📌 收件", done: false, kind });
+    else if (kind === "note") state.notes.unshift({ id, text, kind });
+    else state.sparks.unshift({ id, text, kind });
+    save(); paint(); showToast(kind, id);
+  }
+
+  function paint() {
+    renderMonth(); renderTodos(); renderNotesSparks(); renderClips(); renderLinks();
+  }
+
+  document.getElementById("captureForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const input = document.getElementById("captureInput");
+    const text = input.value.trim();
+    if (!text) return;
+    addItem(text, classify(text));
+    input.value = "";
+  });
+  document.getElementById("fabAdd").addEventListener("click", () => {
+    document.getElementById("captureInput").focus();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+  document.getElementById("toastChange").addEventListener("click", () => {
+    document.getElementById("toast").classList.add("picking");
+  });
+  document.querySelector(".toast-picker").addEventListener("click", e => {
+    const btn = e.target.closest("[data-kind]");
+    if (!btn || !lastId) return;
+    const kind = btn.dataset.kind;
+    let item = null;
+    for (const k of ["todos", "notes", "sparks"]) {
+      const i = state[k].findIndex(x => x.id === lastId);
+      if (i >= 0) { item = state[k].splice(i, 1)[0]; break; }
+    }
+    if (!item) return;
+    item.kind = kind;
+    if (kind === "todo") { item.cat = item.cat || "📌 收件"; state.todos.unshift(item); }
+    else if (kind === "note") state.notes.unshift(item);
+    else state.sparks.unshift(item);
+    let few = {};
+    try { few = JSON.parse(localStorage.getItem(FEW) || "{}"); } catch {}
+    few[item.text] = kind; localStorage.setItem(FEW, JSON.stringify(few));
+    save(); paint(); showToast(kind, item.id);
+  });
+
+  document.body.addEventListener("click", e => {
+    const jump = e.target.closest("[data-jump]");
+    if (jump) {
+      const el = document.getElementById(jump.dataset.jump);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    const chk = e.target.closest(".check");
+    if (!chk) return;
+    if (chk.dataset.todo) {
+      const row = chk.closest("[data-id]");
+      const it = state.todos.find(t => t.id === row.dataset.id);
+      if (it) { it.done = !it.done; save(); paint(); }
+      return;
+    }
+    if (chk.dataset.month) {
+      const row = chk.closest("[data-id]");
+      const it = state.month.find(t => t.id === row.dataset.id);
+      if (it) { it.done = !it.done; save(); paint(); }
+    }
+  });
+
+  document.getElementById("dockSearch").addEventListener("keydown", e => {
+    if (e.key !== "Enter") return;
+    const q = e.target.value.trim().toLowerCase();
+    if (!q) return;
+    const hit = [...document.querySelectorAll(".row .t, .todo-item .txt, .mind-body li")].find(n => n.textContent.toLowerCase().includes(q));
+    if (hit) hit.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+
+  if (EMPTY_DEMO) document.body.classList.add("empty-demo");
+  (function slimDockSearch(){
+    const inp = document.getElementById("dockSearch");
+    if (!inp) return;
+    const full = inp.getAttribute("placeholder") || "搜待办 / 小记 / 门牌";
+    const apply = () => { inp.placeholder = matchMedia("(max-width:899px)").matches ? "搜" : full; };
+    apply(); matchMedia("(max-width:899px)").addEventListener("change", apply);
+  })();
+  greeting();
+  (function(){ const b = document.getElementById("monthBanner"); if (b) b.textContent = `${new Date().getMonth()+1} 月 · 少一点，做好一点`; })();
+  paint();
+  paintEmptyChrome();
+
+  
+    function maybeDoorBreath() {
+      try {
+        if (localStorage.getItem("personal-hub-door-breathe-v2")) return;
+        localStorage.setItem("personal-hub-door-breathe-v2", "1");
+      } catch {}
+      const el = document.querySelector(".dock-bar");
+      if (!el) return;
+      el.classList.remove("breathe");
+      void el.offsetWidth;
+      el.classList.add("breathe");
+      el.addEventListener("animationend", () => el.classList.remove("breathe"), { once: true });
+    }
+
+  // R16 long-press dock-bar → external links (mods OK; input/FAB untouched)
+  (function bindDockLP() {
+    const dock = document.querySelector('.dock');
+    const bar = document.querySelector('.dock-bar');
+    const sheet = document.getElementById('linksSheet');
+    if (!dock || !bar || !sheet) return;
+    const reduce = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let t = null;
+    let armed = false;
+    let openedByLP = false;
+    const open = () => {
+      t = null;
+      openedByLP = true;
+      armed = false;
+      dock.classList.remove('pressing');
+      sheet.hidden = false;
+      if (reduce()) {
+        sheet.classList.add('open');
+      } else {
+        requestAnimationFrame(() => sheet.classList.add('open'));
+      }
+      maybeDoorBreath();
+    };
+    const close = () => {
+      sheet.classList.remove('open');
+      const ms = reduce() ? 0 : 200;
+      setTimeout(() => { sheet.hidden = true; }, ms);
+    };
+    const clearPress = () => {
+      if (t) { clearTimeout(t); t = null; }
+      dock.classList.remove('pressing');
+      armed = false;
+    };
+    bar.addEventListener('pointerdown', e => {
+      if (e.button != null && e.button !== 0) return;
+      if (e.target.closest('#dockSearch, #fabAdd, .fab, .links-sheet')) return;
+      openedByLP = false;
+      armed = true;
+      dock.classList.add('pressing');
+      t = setTimeout(open, 480);
+    });
+    const endPress = e => {
+      const wasArmed = armed;
+      const wasOpen = openedByLP;
+      clearPress();
+      // short tap on bar chrome (not mod) → focus search; don't open sheet
+      if (wasArmed && !wasOpen && e && e.type === 'pointerup') {
+        if (!e.target.closest('.mod, button, a')) {
+          const input = document.getElementById('dockSearch');
+          if (input) input.focus();
+        }
+      }
+    };
+    ['pointerup','pointercancel','pointerleave'].forEach(ev => bar.addEventListener(ev, endPress));
+    // after LP on a mod, swallow the click so jump doesn't fire
+    dock.addEventListener('click', e => {
+      if (!openedByLP) return;
+      if (e.target.closest('.mod')) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      openedByLP = false;
+    }, true);
+    sheet.addEventListener('click', e => { if (e.target === sheet) close(); });
+    document.getElementById('linksClose').addEventListener('click', close);
+  })();
+
+  document.getElementById("linkAdd").addEventListener("click", () => {
+    const name = document.getElementById("linkName").value.trim();
+    let url = document.getElementById("linkUrl").value.trim();
+    if (!name || !url) return;
+    if (!/^https?:\/\//i.test(url)) return;
+    const list = loadLinks();
+    list.push({ name, url });
+    saveLinks(list);
+    document.getElementById("linkName").value = "";
+    document.getElementById("linkUrl").value = "";
+    const el = document.getElementById("linksList");
+    const i = list.length - 1;
+    const L = list[i];
+    const row = document.createElement("div");
+    row.className = "links-row entering";
+    row.innerHTML = `<a class="links-item" href="${esc(L.url)}" target="_blank" rel="noopener"><span>${esc(L.name)}</span><span>↗</span></a><button type="button" class="links-del" data-i="${i}" aria-label="删">×</button>`;
+    el.appendChild(row);
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) {
+      row.classList.add("in");
+      row.classList.remove("entering");
+    } else {
+      requestAnimationFrame(() => row.classList.add("in"));
+      setTimeout(() => { row.classList.remove("entering", "in"); }, 220);
+    }
+  });
+  document.getElementById("linksList").addEventListener("click", e => {
+    const btn = e.target.closest(".links-del");
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const row = btn.closest(".links-row");
+    const list = loadLinks();
+    const i = +btn.dataset.i;
+    if (i < 0 || i >= list.length) return;
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const finish = () => {
+      list.splice(i, 1);
+      saveLinks(list);
+      renderLinks();
+    };
+    if (!row || reduce) { finish(); return; }
+    row.classList.add("removing");
+    let done = false;
+    const once = () => { if (done) return; done = true; finish(); };
+    row.addEventListener("transitionend", once, { once: true });
+    setTimeout(once, 150);
+  });
+
+})();
+</script>
+</body>
+</html>
