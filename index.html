@@ -110,7 +110,7 @@
   .profile .name { font-size: 14px; font-weight: 650; }
   .profile .role { font-size: 11px; color: var(--ink2); margin-top: 2px; }
   .motto { margin-top: 10px; font-size: 12px; color: var(--ink2); line-height: 1.55; }
-  .motto li { list-style: none; padding: 2px 0; }
+  .motto li { list-style: none; padding: 2px 0; display: flex; align-items: flex-start; gap: 4px; }
   .motto li::before { content: "· "; color: var(--ink3); }
 
   .fat-stub {
@@ -131,7 +131,7 @@
   .quote.green { background: #e6f7ed; color: #1b5e35; border-left-color: #81c784; }
   .quote.tan { background: #fff3e0; color: #7a4a12; border-left-color: #ffb74d; }
 
-  .month-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+  .month-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
   .month-head .title { font-size: 16px; font-weight: 700; letter-spacing: -0.02em; }
   .month-head .desc { font-size: 11px; color: var(--ink3); margin-top: 2px; }
   .tabs { display: flex; gap: 6px; margin: 8px 0 10px; }
@@ -678,6 +678,135 @@
   body.empty-demo #noteCount,
   body.empty-demo #sparkCount { display: none; }
 
+
+
+  /* v2 click-edit / add / delete */
+  .card > h2, .card .card-head {
+    display: flex; align-items: center; gap: 6px; position: relative;
+  }
+  .card-head {
+    font-size: 13px; font-weight: 600; color: var(--ink2);
+    margin-bottom: 10px;
+  }
+  .month-head .card-head-inline { margin: 0; font-size: 16px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; }
+  .mod-add {
+    margin-left: auto;
+    width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0;
+    color: var(--ink3); font-size: 18px; line-height: 1;
+    display: grid; place-items: center;
+    opacity: 0; transition: opacity .15s var(--ease), background .15s;
+  }
+  .mod-add:hover, .mod-add:focus-visible { background: #f0f0f2; color: var(--ink); opacity: 1 !important; }
+  @media (hover: hover) and (min-width: 900px) {
+    .card:hover > h2 .mod-add,
+    .card:hover > .card-head .mod-add,
+    .card:hover .month-head .mod-add { opacity: 0.45; }
+  }
+  @media (max-width: 899px) {
+    .mod-add { opacity: 0.35; }
+  }
+
+  .item-del {
+    width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0;
+    color: var(--ink3); font-size: 15px; line-height: 1;
+    display: grid; place-items: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity .15s var(--ease), background .15s, color .15s;
+  }
+  .item-del:hover { background: #fee; color: #c62828; }
+  @media (hover: hover) and (min-width: 900px) {
+    .todo-item:hover .item-del,
+    .row:hover .item-del,
+    .quote-item:hover .item-del,
+    .mind-li:hover .item-del,
+    .clip:hover .item-del,
+    .motto li:hover .item-del,
+    .links-row:hover .item-del { opacity: 0.75; pointer-events: auto; }
+  }
+  /* mobile: hide × — swipe deletes */
+  @media (max-width: 899px) {
+    .item-del { display: none; }
+  }
+
+  .editable {
+    outline: none; border-radius: 4px; cursor: text;
+    min-width: 1ch; word-break: break-word;
+  }
+  .editable.editing {
+    background: rgba(0,113,227,0.06);
+    box-shadow: inset 0 0 0 1.5px rgba(0,113,227,0.35);
+    padding: 1px 4px; margin: -1px -4px;
+  }
+  .profile .name.editable.editing,
+  .profile .role.editable.editing,
+  .month-banner.editable.editing,
+  .cover .sub.editable.editing { padding: 1px 4px; }
+
+  .quote-item {
+    position: relative;
+    display: flex; align-items: flex-start; gap: 6px;
+    margin-bottom: 8px;
+  }
+  .quote-item:last-child { margin-bottom: 0; }
+  .quote-item .quote { flex: 1; min-width: 0; margin-bottom: 0; }
+  .quote-item .item-del { margin-top: 8px; }
+
+  .todo-item, .row, .mind-li, .motto li {
+    position: relative;
+  }
+  .todo-item .txt, .row .t, .mind-li .txt, .motto li .txt { flex: 1; min-width: 0; }
+  .todo-item { align-items: center; }
+  .todo-item .txt { padding-right: 2px; }
+
+  .swipeable { touch-action: pan-y; transition: transform .18s var(--ease); }
+  .swipeable.swiping { transition: none; }
+  .swipeable.swipe-out { transform: translateX(-120%); opacity: 0; transition: transform .2s var(--ease), opacity .2s; }
+
+  .clip {
+    display: block; border-radius: 10px; overflow: hidden;
+    border: 1px solid var(--line); background: #fafafa;
+    position: relative; color: inherit;
+  }
+  .clip .thumb {
+    display: block; height: 78px; background-size: cover; background-position: center;
+    background-color: #eee;
+  }
+  .clip .meta-row {
+    display: flex; align-items: center; gap: 4px;
+    padding: 6px 8px;
+  }
+  .clip .meta {
+    flex: 1; min-width: 0; font-size: 12px; font-weight: 550; line-height: 1.35;
+  }
+  .clip-open {
+    width: 24px; height: 24px; border-radius: 6px; flex-shrink: 0;
+    color: var(--ink3); font-size: 13px;
+    display: grid; place-items: center;
+  }
+  .clip-open:hover { background: #f0f0f2; color: var(--accent); }
+  .clip .item-del { position: absolute; top: 4px; right: 4px; background: rgba(255,255,255,0.9); }
+  @media (max-width: 899px) {
+    .media a.clip .meta, .clip .meta-row { display: none; }
+    .clip .thumb { height: 56px; min-height: 52px; border-radius: 6px; }
+  }
+  /* override old a.clip rules */
+  .media a { display: none; }
+  .media .clip { display: block; }
+
+  .mind-li {
+    list-style: none; padding: 4px 0; border-top: 1px solid var(--line);
+    display: flex; align-items: flex-start; gap: 6px;
+  }
+  .mind-li:first-child { border-top: none; }
+  .mind-row .mind-body { padding: 0 12px 12px; font-size: 12.5px; color: var(--ink2); line-height: 1.5; }
+  .mind-row .mind-body ul { margin: 0; padding: 0; }
+
+  .toast.undo-mode .toast-picker { display: none !important; }
+  .toast.undo-mode .chg { display: none; }
+  .toast .undo-btn { color: #7eb8ff; font-size: 12px; margin-left: auto; }
+
+  .cat-h.editable { display: inline-block; }
+
 </style>
 </head>
 <body>
@@ -698,97 +827,64 @@
 
     <div class="grid">
       <aside>
-        <div class="card">
+        <div class="card" id="sec-profile">
           <div class="profile">
             <div class="avatar"><img src="./assets/avatar.svg" alt="" /></div>
             <div>
-              <div class="name">我的桌面</div>
-              <div class="role">Orbit Desk</div>
+              <div class="name editable" id="profileName" data-edit="profile.name">我的桌面</div>
+              <div class="role editable" id="profileRole" data-edit="profile.role">Orbit Desk</div>
             </div>
           </div>
-          <ul class="motto">
-            <li>先记下，再整理</li>
-            <li>一次只做一件事</li>
-          </ul>
+          <div class="card-head" style="margin-top:8px;margin-bottom:4px;font-size:11px;color:var(--ink3)">
+            <span>座右铭</span>
+            <button type="button" class="mod-add" data-add="motto" aria-label="添加" title="添加">＋</button>
+          </div>
+          <ul class="motto" id="mottoList"></ul>
         </div>
         <div class="card section-jump" id="sec-quote">
-          <h2>Remind · 提醒</h2>
-          <div class="quote tan">少一点，但做好一点。</div>
-          <div class="quote pink">先开始，再完美。</div>
-          <div class="quote blue">今天的小事，就是明天的底气。</div>
-          <div class="quote green">记下来，脑子就空出来了。</div>
+          <h2>Remind · 提醒 <button type="button" class="mod-add" data-add="quote" aria-label="添加" title="添加">＋</button></h2>
+          <div id="quoteList"></div>
         </div>
       </aside>
 
       <div class="col-mid">
         <div class="mid-duo">
           <div class="card section-jump" id="sec-todo">
-            <h2>今日待办 <span class="count" id="todoCount">0</span></h2>
+            <h2>今日待办 <span class="count" id="todoCount">0</span><button type="button" class="mod-add" data-add="todo" aria-label="添加" title="添加">＋</button></h2>
             <div id="todoCats"></div>
           </div>
           <div class="card section-jump" id="sec-clip">
-            <h2>灵感 / 视频剪藏</h2>
+            <h2>灵感 / 视频剪藏 <button type="button" class="mod-add" data-add="clip" aria-label="添加" title="添加">＋</button></h2>
             <div class="media" id="clipList"></div>
           </div>
         </div>
         <main class="card section-jump col-main" id="sec-month">
           <div class="month-head">
             <div>
-              <div class="title">Monthly Plan</div>
+              <div class="title card-head-inline">Monthly Plan</div>
             </div>
+            <button type="button" class="mod-add" data-add="month" aria-label="添加" title="添加">＋</button>
           </div>
           <div class="tabs">
             <button type="button" class="tab on">2026年</button>
             <button type="button" class="tab">2025年</button>
           </div>
-          <div class="month-banner" id="monthBanner">本月 · 少一点，做好一点</div>
+          <div class="month-banner editable" id="monthBanner" data-edit="monthBanner">本月 · 少一点，做好一点</div>
           <div id="monthList"></div>
         </main>
       </div>
 
       <aside>
         <div class="card section-jump" id="sec-mind">
-          <h2>Mind · 二级</h2>
-          <div class="mind-list">
-            <details class="mind-row" open>
-              <summary>📜 喜欢的摘录 <span class="mind-tag">3</span><span class="chev">›</span></summary>
-              <div class="mind-body">
-                <ul>
-                  <li>慢慢来，比较快。</li>
-                  <li>把复杂留给自己，把简单留给用的人。</li>
-                  <li>好的工具，用完就忘了它在。</li>
-                </ul>
-              </div>
-            </details>
-            <details class="mind-row" open>
-              <summary>💭 Future <span class="mind-tag">3</span><span class="chev">›</span></summary>
-              <div class="mind-body">
-                <ul>
-                  <li>学习 · 一门新技能</li>
-                  <li>工作 · 一个小项目上线</li>
-                  <li>生活 · 一次短途旅行</li>
-                </ul>
-              </div>
-            </details>
-            <details class="mind-row" open>
-              <summary>🫶 热爱清单 <span class="mind-tag">4</span><span class="chev">›</span></summary>
-              <div class="mind-body">
-                <ul>
-                  <li>📚 读完一本书 · Done</li>
-                  <li>🏃 每周跑步两次 · In progress</li>
-                  <li>🎧 整理一个歌单 · Done</li>
-                  <li>🌱 养活一盆绿植 · In progress</li>
-                </ul>
-              </div>
-            </details>
-          </div>
+          <h2>Mind · 二级 <button type="button" class="mod-add" data-add="mind" aria-label="添加" title="添加">＋</button></h2>
+          <div class="mind-list" id="mindList"></div>
         </div>
         <div class="card section-jump" id="sec-note">
-          <h2>小记 <span class="count" id="noteCount">0</span></h2>
+          <h2>小记 <span class="count" id="noteCount">0</span><button type="button" class="mod-add" data-add="note" aria-label="添加" title="添加">＋</button></h2>
           <div id="noteList"></div>
         </div>
         <div class="card section-jump" id="sec-spark">
-          <h2>灵感墙 <span class="count" id="sparkCount">0</span></h2>
+          <h2>灵感墙 <span class="count" id="sparkCount">0</span><button type="button" class="mod-add" data-add="spark" aria-label="添加" title="添加">＋</button></h2>
           <div id="sparkList"></div>
         </div>
       </aside>
@@ -829,6 +925,7 @@
     <div class="toast-row">
       <span id="toastMsg"></span>
       <button type="button" class="chg" id="toastChange">改</button>
+      <button type="button" class="undo-btn" id="toastUndo" hidden>撤销</button>
     </div>
     <div class="toast-picker">
       <button type="button" data-kind="todo">待办</button>
@@ -841,6 +938,7 @@
 (() => {
   const KEY = "personal-hub-v9";
   const FEW = "personal-hub-fewshot-v9";
+  const LINKS_KEY = "personal-hub-links-v1";
 
   const SECTIONS = [
     { key: "career", label: "事业", pill: "career", ico: "💼" },
@@ -866,41 +964,67 @@
     "🤖 学习": ["读一章书", "试一个新工具"],
   };
 
-  const CLIPS = [
+  const CLIPS_SEED = [
     { title: "Calm", thumb: "./assets/clip-a.svg", href: "https://www.pinterest.com/search/pins/?q=calm" },
     { title: "Desk", thumb: "./assets/clip-b.svg", href: "https://www.pinterest.com/search/pins/?q=desk%20setup%20minimal" },
     { title: "Dusk", thumb: "./assets/clip-c.svg", href: "https://www.pinterest.com/search/pins/?q=dusk" },
     { title: "Light", thumb: "./assets/clip-d.svg", href: "https://www.pinterest.com/search/pins/?q=light" },
   ];
 
-  const LINKS_KEY = "personal-hub-links-v1";
+  const QUOTES_SEED = [
+    { text: "少一点，但做好一点。", color: "tan" },
+    { text: "先开始，再完美。", color: "pink" },
+    { text: "今天的小事，就是明天的底气。", color: "blue" },
+    { text: "记下来，脑子就空出来了。", color: "green" },
+  ];
+  const QUOTE_COLORS = ["tan", "pink", "blue", "green"];
+
+  const MIND_SEED = [
+    {
+      title: "喜欢的摘录", ico: "📜",
+      items: ["慢慢来，比较快。", "把复杂留给自己，把简单留给用的人。", "好的工具，用完就忘了它在。"]
+    },
+    {
+      title: "Future", ico: "💭",
+      items: ["学习 · 一门新技能", "工作 · 一个小项目上线", "生活 · 一次短途旅行"]
+    },
+    {
+      title: "热爱清单", ico: "🫶",
+      items: ["📚 读完一本书 · Done", "🏃 每周跑步两次 · In progress", "🎧 整理一个歌单 · Done", "🌱 养活一盆绿植 · In progress"]
+    },
+  ];
+
+  const MOTTO_SEED = ["先记下，再整理", "一次只做一件事"];
+
   const LINKS_SEED = [
     { name: "Notion", url: "https://www.notion.so/" },
     { name: "Pinterest", url: "https://www.pinterest.com/" },
     { name: "GitHub", url: "https://github.com/" },
   ];
 
+  const PROFILE_SEED = { name: "我的桌面", role: "Orbit Desk" };
+
   const EMPTY_DEMO = new URLSearchParams(location.search).get("empty") === "1";
   let state = load();
   let lastId = null;
   let toastTimer = null;
+  let undoBag = null;
+  let editingEl = null;
+  let editOrig = "";
 
   function uid() { return Math.random().toString(36).slice(2, 10); }
 
-  function load() {
-    if (EMPTY_DEMO) {
-      return { todos: [], notes: [], sparks: [], month: [] };
-    }
-    try {
-      const raw = JSON.parse(localStorage.getItem(KEY) || "null");
-      if (raw && Array.isArray(raw.todos) && Array.isArray(raw.month)) return raw;
-    } catch {}
+  function seedTodos() {
     const todos = [];
     Object.entries(TODO_SEED).forEach(([cat, items]) => {
       items.forEach(t => todos.push({ id: uid(), text: t, cat, done: false, kind: "todo" }));
     });
+    return todos;
+  }
+
+  function seedFull() {
     return {
-      todos,
+      todos: seedTodos(),
       notes: [
         { id: uid(), text: "https://www.notion.so 晚点细看", kind: "note" },
         { id: uid(), text: "会议纪要：只留决策和负责人", kind: "note" },
@@ -913,10 +1037,72 @@
         { id: uid(), text: "🔥", kind: "spark" },
       ],
       month: MONTH_SEED.map(x => ({ ...x, id: uid() })),
+      profile: { ...PROFILE_SEED },
+      mottos: MOTTO_SEED.map(t => ({ id: uid(), text: t })),
+      quotes: QUOTES_SEED.map(q => ({ id: uid(), text: q.text, color: q.color })),
+      clips: CLIPS_SEED.map(c => ({ id: uid(), title: c.title, thumb: c.thumb, href: c.href })),
+      mind: MIND_SEED.map(s => ({
+        id: uid(), title: s.title, ico: s.ico,
+        items: s.items.map(t => ({ id: uid(), text: t }))
+      })),
+      monthBanner: `${new Date().getMonth()+1} 月 · 少一点，做好一点`,
+      _v: 2,
     };
   }
 
-  function save() { if (EMPTY_DEMO) return; localStorage.setItem(KEY, JSON.stringify(state)); }
+  function migrate(raw) {
+    if (!raw || typeof raw !== "object") return seedFull();
+    if (!Array.isArray(raw.todos)) raw.todos = [];
+    if (!Array.isArray(raw.notes)) raw.notes = [];
+    if (!Array.isArray(raw.sparks)) raw.sparks = [];
+    if (!Array.isArray(raw.month)) raw.month = [];
+    if (!raw.profile) raw.profile = { ...PROFILE_SEED };
+    if (!Array.isArray(raw.mottos)) raw.mottos = MOTTO_SEED.map(t => ({ id: uid(), text: t }));
+    if (!Array.isArray(raw.quotes)) raw.quotes = QUOTES_SEED.map(q => ({ id: uid(), text: q.text, color: q.color }));
+    if (!Array.isArray(raw.clips)) raw.clips = CLIPS_SEED.map(c => ({ id: uid(), title: c.title, thumb: c.thumb, href: c.href }));
+    if (!Array.isArray(raw.mind)) {
+      raw.mind = MIND_SEED.map(s => ({
+        id: uid(), title: s.title, ico: s.ico,
+        items: s.items.map(t => ({ id: uid(), text: t }))
+      }));
+    } else {
+      raw.mind.forEach(s => {
+        if (!s.id) s.id = uid();
+        if (!Array.isArray(s.items)) s.items = [];
+        s.items.forEach(it => { if (typeof it === "string") { /* legacy */ } });
+        s.items = s.items.map(it => typeof it === "string" ? { id: uid(), text: it } : (it.id ? it : { id: uid(), text: it.text || "" }));
+      });
+    }
+    if (typeof raw.monthBanner !== "string") {
+      raw.monthBanner = `${new Date().getMonth()+1} 月 · 少一点，做好一点`;
+    }
+    raw._v = 2;
+    return raw;
+  }
+
+  function emptyState() {
+    return {
+      todos: [], notes: [], sparks: [], month: [],
+      profile: { ...PROFILE_SEED },
+      mottos: [], quotes: [], clips: [], mind: [],
+      monthBanner: `${new Date().getMonth()+1} 月 · 少一点，做好一点`,
+      _v: 2,
+    };
+  }
+
+  function load() {
+    if (EMPTY_DEMO) return emptyState();
+    try {
+      const raw = JSON.parse(localStorage.getItem(KEY) || "null");
+      if (raw && Array.isArray(raw.todos) && Array.isArray(raw.month)) return migrate(raw);
+    } catch {}
+    return seedFull();
+  }
+
+  function save() {
+    if (EMPTY_DEMO) return;
+    localStorage.setItem(KEY, JSON.stringify(state));
+  }
 
   function classify(raw) {
     raw = String(raw || "").trim();
@@ -924,7 +1110,6 @@
     let few = {};
     try { few = JSON.parse(localStorage.getItem(FEW) || "{}"); } catch {}
     if (few[raw]) return few[raw];
-    // R15 sticky: URL / ? / 买 priority; trailing date/顺便 keep primary bucket
     if (/https?:\/\//i.test(raw) || /\bwww\./i.test(t) || /\b[\w-]+\.(com|cn|io|app|dev|net|org|pro|me|co)(\/\S*)?\b/i.test(raw)) return "note";
     if (/\p{Extended_Pictographic}/u.test(raw) && /^[\p{Extended_Pictographic}\p{Emoji_Presentation}\uFE0F\s]+$/u.test(raw)) return "spark";
     if (/[？?]/.test(raw)) return "spark";
@@ -946,21 +1131,51 @@
     else if (h < 14) g = "中午好";
     else if (h < 18) g = "下午好";
     else g = "晚上好";
-    document.getElementById("greetingSub").textContent = `Orbit Desk · ${g} · 先看今日`;
+    const el = document.getElementById("greetingSub");
+    if (el && !el.classList.contains("editing")) {
+      el.textContent = `Orbit Desk · ${g} · 先看今日`;
+    }
   }
 
   function emptyLine() {
     return '<div class="empty-line">今天还没写</div>';
   }
 
-  function paintEmptyChrome() {
-    if (!EMPTY_DEMO) return;
-    const mind = document.querySelector("#sec-mind .mind-list");
-    if (mind) mind.innerHTML = emptyLine();
-    // month banner stays; empty modules share one line via emptyLine()
+  function delBtn(bag, id, extra) {
+    return `<button type="button" class="item-del" data-del="${bag}" data-id="${id}"${extra ? " " + extra : ""} aria-label="删除">×</button>`;
+  }
+
+  function renderProfile() {
+    const n = document.getElementById("profileName");
+    const r = document.getElementById("profileRole");
+    if (n && !n.classList.contains("editing")) n.textContent = state.profile.name || PROFILE_SEED.name;
+    if (r && !r.classList.contains("editing")) r.textContent = state.profile.role || PROFILE_SEED.role;
+    const el = document.getElementById("mottoList");
+    if (!el) return;
+    if (!state.mottos.length) { el.innerHTML = ""; return; }
+    el.innerHTML = state.mottos.map(m => `
+      <li class="swipeable" data-bag="motto" data-id="${m.id}">
+        <span class="txt editable" data-edit="motto" data-id="${m.id}">${esc(m.text)}</span>
+        ${delBtn("motto", m.id)}
+      </li>`).join("");
+  }
+
+  function renderQuotes() {
+    const el = document.getElementById("quoteList");
+    if (!el) return;
+    if (!state.quotes.length) { el.innerHTML = emptyLine(); return; }
+    el.innerHTML = state.quotes.map(q => `
+      <div class="quote-item swipeable" data-bag="quote" data-id="${q.id}">
+        <div class="quote ${esc(q.color || "tan")} editable" data-edit="quote" data-id="${q.id}">${esc(q.text)}</div>
+        ${delBtn("quote", q.id)}
+      </div>`).join("");
   }
 
   function renderMonth() {
+    const banner = document.getElementById("monthBanner");
+    if (banner && !banner.classList.contains("editing")) {
+      banner.textContent = state.monthBanner || `${new Date().getMonth()+1} 月 · 少一点，做好一点`;
+    }
     const el = document.getElementById("monthList");
     el.innerHTML = SECTIONS.map(sec => {
       const items = state.month.filter(it => it.sec === sec.key);
@@ -968,12 +1183,13 @@
       return `
         <div class="group-label">${sec.ico} ${sec.label} <span class="pill tag ${sec.pill}">${sec.label}</span></div>
         ${items.map(it => `
-          <div class="row ${it.done ? "done" : ""}" data-id="${it.id}">
+          <div class="row ${it.done ? "done" : ""} swipeable" data-bag="month" data-id="${it.id}">
             <div class="ico">${it.ico || "•"}</div>
             <div class="body">
-              <div class="t">${esc(it.t)}</div>
+              <div class="t editable" data-edit="month" data-id="${it.id}">${esc(it.t)}</div>
               <div class="tags">${(it.tags||[]).map(([k,l]) => `<span class="tag ${k}">${esc(l)}</span>`).join("")}</div>
             </div>
+            ${delBtn("month", it.id)}
             <button type="button" class="check ${it.done ? "on" : ""}" data-month="1" aria-label="完成"></button>
           </div>`).join("")}`;
     }).join("") || emptyLine();
@@ -985,13 +1201,15 @@
       const c = t.cat || "📌 收件";
       (cats[c] = cats[c] || []).push(t);
     });
-    const todoHtml = Object.keys(cats).map(c => `
+    const keys = Object.keys(cats);
+    const todoHtml = keys.map(c => `
       <div class="cat">
-        <div class="cat-h">${esc(c)}</div>
+        <div class="cat-h editable" data-edit="cat" data-cat="${esc(c)}">${esc(c)}</div>
         ${cats[c].map(t => `
-          <div class="todo-item ${t.done ? "done" : ""}" data-id="${t.id}">
+          <div class="todo-item ${t.done ? "done" : ""} swipeable" data-bag="todo" data-id="${t.id}">
             <button type="button" class="check ${t.done ? "on" : ""}" data-todo="1"></button>
-            <div class="txt">${esc(t.text)}</div>
+            <div class="txt editable" data-edit="todo" data-id="${t.id}">${esc(t.text)}</div>
+            ${delBtn("todo", t.id)}
           </div>`).join("")}
       </div>`).join("");
     document.getElementById("todoCats").innerHTML = todoHtml || emptyLine();
@@ -1000,9 +1218,15 @@
 
   function renderNotesSparks() {
     document.getElementById("noteList").innerHTML = state.notes.map(n =>
-      `<div class="todo-item" style="font-size:12.5px">${esc(n.text)}</div>`).join("") || emptyLine();
+      `<div class="todo-item swipeable" style="font-size:12.5px" data-bag="note" data-id="${n.id}">
+        <div class="txt editable" data-edit="note" data-id="${n.id}">${esc(n.text)}</div>
+        ${delBtn("note", n.id)}
+      </div>`).join("") || emptyLine();
     document.getElementById("sparkList").innerHTML = state.sparks.map(n =>
-      `<div class="todo-item" style="font-size:12.5px">${esc(n.text)}</div>`).join("") || emptyLine();
+      `<div class="todo-item swipeable" style="font-size:12.5px" data-bag="spark" data-id="${n.id}">
+        <div class="txt editable" data-edit="spark" data-id="${n.id}">${esc(n.text)}</div>
+        ${delBtn("spark", n.id)}
+      </div>`).join("") || emptyLine();
     document.getElementById("noteCount").textContent = state.notes.length;
     document.getElementById("sparkCount").textContent = state.sparks.length;
     const bn = document.getElementById("bNote"), bs = document.getElementById("bSpark");
@@ -1010,45 +1234,100 @@
     bs.hidden = !state.sparks.length; bs.textContent = Math.min(state.sparks.length, 9);
   }
 
-  function loadLinks() {
-    try {
-      const raw = JSON.parse(localStorage.getItem(LINKS_KEY) || "null");
-      if (Array.isArray(raw)) return raw;
-    } catch {}
-    return LINKS_SEED.map(x => ({ ...x }));
-  }
-  function saveLinks(list) { localStorage.setItem(LINKS_KEY, JSON.stringify(list)); }
-  function renderLinks() {
-    const list = loadLinks();
-    const el = document.getElementById("linksList");
-    if (!el) return;
-    el.innerHTML = list.map((L, i) => `
-      <div class="links-row">
-        <a class="links-item" href="${esc(L.url)}" target="_blank" rel="noopener"><span>${esc(L.name)}</span><span>↗</span></a>
-        <button type="button" class="links-del" data-i="${i}" aria-label="删">×</button>
-      </div>`).join("");
-  }
-
   function renderClips() {
     const el = document.getElementById("clipList");
     if (!el) return;
-    if (EMPTY_DEMO) { el.innerHTML = emptyLine(); return; }
-    el.innerHTML = CLIPS.map(c => `
-      <a class="clip" href="${esc(c.href)}" target="_blank" rel="noopener">
-        <span class="thumb" style="background-image:url(${esc(c.thumb)})"></span>
-        <span class="meta">${esc(c.title||"")}</span>
-      </a>`).join("");
+    if (!state.clips.length) { el.innerHTML = emptyLine(); return; }
+    el.innerHTML = state.clips.map(c => `
+      <div class="clip swipeable" data-bag="clip" data-id="${c.id}">
+        <span class="thumb" style="background-image:url(${esc(c.thumb || "./assets/clip-a.svg")})"></span>
+        <div class="meta-row">
+          <span class="meta editable" data-edit="clip" data-id="${c.id}">${esc(c.title || "")}</span>
+          <button type="button" class="clip-open" data-href="${esc(c.href || "")}" aria-label="打开链接">↗</button>
+          ${delBtn("clip", c.id)}
+        </div>
+      </div>`).join("");
+  }
+
+  function renderMind() {
+    const el = document.getElementById("mindList");
+    if (!el) return;
+    if (!state.mind.length) { el.innerHTML = emptyLine(); return; }
+    el.innerHTML = state.mind.map(sec => `
+      <details class="mind-row" open data-mind-sec="${sec.id}">
+        <summary>
+          <span class="editable" data-edit="mind-title" data-id="${sec.id}">${esc((sec.ico || "") + " " + (sec.title || "")).trim() || "分组"}</span>
+          <span class="mind-tag">${(sec.items || []).length}</span>
+          <span class="chev">›</span>
+        </summary>
+        <div class="mind-body">
+          <ul>
+            ${(sec.items || []).map(it => `
+              <li class="mind-li swipeable" data-bag="mind-item" data-id="${it.id}" data-sec="${sec.id}">
+                <span class="txt editable" data-edit="mind-item" data-id="${it.id}" data-sec="${sec.id}">${esc(it.text)}</span>
+                ${delBtn("mind-item", it.id, `data-sec="${sec.id}"`)}
+              </li>`).join("")}
+          </ul>
+        </div>
+      </details>`).join("");
+  }
+
+  function loadLinks() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(LINKS_KEY) || "null");
+      if (Array.isArray(raw)) return raw.map((x, i) => ({ id: x.id || ("L" + i), name: x.name, url: x.url }));
+    } catch {}
+    return LINKS_SEED.map(x => ({ ...x, id: uid() }));
+  }
+  function saveLinks(list) {
+    if (EMPTY_DEMO) return;
+    localStorage.setItem(LINKS_KEY, JSON.stringify(list));
+  }
+  let linksCache = null;
+  function getLinks() {
+    if (!linksCache) linksCache = loadLinks();
+    return linksCache;
+  }
+  function renderLinks() {
+    const list = getLinks();
+    const el = document.getElementById("linksList");
+    if (!el) return;
+    el.innerHTML = list.map((L, i) => `
+      <div class="links-row swipeable" data-bag="link" data-id="${L.id}">
+        <a class="links-item" href="${esc(L.url)}" target="_blank" rel="noopener">
+          <span class="editable" data-edit="link-name" data-id="${L.id}">${esc(L.name)}</span>
+          <span>↗</span>
+        </a>
+        <button type="button" class="item-del links-del" data-del="link" data-id="${L.id}" aria-label="删">×</button>
+      </div>`).join("");
   }
 
   function showToast(kind, id) {
     lastId = id;
+    undoBag = null;
     const map = { todo: "→ 今日待办", note: "→ 小记", spark: "→ 灵感" };
-    document.getElementById("toastMsg").textContent = map[kind] || "→";
     const toast = document.getElementById("toast");
+    toast.classList.remove("undo-mode", "picking");
+    document.getElementById("toastMsg").textContent = map[kind] || "→";
+    document.getElementById("toastChange").hidden = false;
+    document.getElementById("toastUndo").hidden = true;
     toast.classList.add("show");
-    toast.classList.remove("picking");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toast.classList.remove("show", "picking"), 4200);
+    toastTimer = setTimeout(() => toast.classList.remove("show", "picking", "undo-mode"), 4200);
+  }
+
+  function showUndoToast() {
+    const toast = document.getElementById("toast");
+    toast.classList.add("show", "undo-mode");
+    toast.classList.remove("picking");
+    document.getElementById("toastMsg").textContent = "已删除 · 撤销";
+    document.getElementById("toastChange").hidden = true;
+    document.getElementById("toastUndo").hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toast.classList.remove("show", "picking", "undo-mode");
+      undoBag = null;
+    }, 5000);
   }
 
   function addItem(text, kind) {
@@ -1060,9 +1339,249 @@
   }
 
   function paint() {
-    renderMonth(); renderTodos(); renderNotesSparks(); renderClips(); renderLinks();
+    renderProfile();
+    renderQuotes();
+    renderMonth();
+    renderTodos();
+    renderNotesSparks();
+    renderClips();
+    renderMind();
+    renderLinks();
   }
 
+  /* —— edit —— */
+  function beginEdit(el) {
+    if (!el || el.classList.contains("editing")) return;
+    if (editingEl && editingEl !== el) commitEdit(true);
+    editingEl = el;
+    editOrig = el.textContent;
+    el.contentEditable = "true";
+    el.classList.add("editing");
+    el.focus();
+    try {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } catch {}
+  }
+
+  function commitEdit(saveIt) {
+    if (!editingEl) return;
+    const el = editingEl;
+    const text = el.textContent.replace(/\u00a0/g, " ").trim();
+    const kind = el.dataset.edit;
+    const id = el.dataset.id;
+    el.contentEditable = "false";
+    el.classList.remove("editing");
+    editingEl = null;
+
+    if (!saveIt) {
+      el.textContent = editOrig;
+      return;
+    }
+
+    // discard empty new items
+    if (el.dataset.new === "1" && !text) {
+      deleteByRef(kind, id, el.dataset.sec);
+      paint();
+      return;
+    }
+
+    if (kind === "profile.name") {
+      state.profile.name = text || PROFILE_SEED.name;
+      el.textContent = state.profile.name;
+    } else if (kind === "profile.role") {
+      state.profile.role = text || PROFILE_SEED.role;
+      el.textContent = state.profile.role;
+    } else if (kind === "monthBanner") {
+      state.monthBanner = text || state.monthBanner;
+      el.textContent = state.monthBanner;
+    } else if (kind === "todo") {
+      const it = state.todos.find(x => x.id === id);
+      if (it) { if (!text) { deleteItem("todo", id); return; } it.text = text; }
+    } else if (kind === "note") {
+      const it = state.notes.find(x => x.id === id);
+      if (it) { if (!text) { deleteItem("note", id); return; } it.text = text; }
+    } else if (kind === "spark") {
+      const it = state.sparks.find(x => x.id === id);
+      if (it) { if (!text) { deleteItem("spark", id); return; } it.text = text; }
+    } else if (kind === "month") {
+      const it = state.month.find(x => x.id === id);
+      if (it) { if (!text) { deleteItem("month", id); return; } it.t = text; }
+    } else if (kind === "quote") {
+      const it = state.quotes.find(x => x.id === id);
+      if (it) { if (!text) { deleteItem("quote", id); return; } it.text = text; }
+    } else if (kind === "motto") {
+      const it = state.mottos.find(x => x.id === id);
+      if (it) { if (!text) { deleteItem("motto", id); return; } it.text = text; }
+    } else if (kind === "clip") {
+      const it = state.clips.find(x => x.id === id);
+      if (it) { if (!text) { deleteItem("clip", id); return; } it.title = text; }
+    } else if (kind === "mind-item") {
+      const sec = state.mind.find(s => s.id === el.dataset.sec);
+      const it = sec && (sec.items || []).find(x => x.id === id);
+      if (it) { if (!text) { deleteItem("mind-item", id, el.dataset.sec); return; } it.text = text; }
+    } else if (kind === "mind-title") {
+      const sec = state.mind.find(s => s.id === id);
+      if (sec) {
+        // keep leading emoji as ico if present
+        const m = text.match(/^(\p{Extended_Pictographic})\s*(.*)$/u);
+        if (m) { sec.ico = m[1]; sec.title = m[2] || sec.title; }
+        else { sec.title = text || sec.title; }
+      }
+    } else if (kind === "cat") {
+      const oldCat = el.dataset.cat;
+      if (text && text !== oldCat) {
+        state.todos.forEach(t => { if (t.cat === oldCat) t.cat = text; });
+      }
+    } else if (kind === "link-name") {
+      const list = getLinks();
+      const it = list.find(x => x.id === id);
+      if (it) { it.name = text || it.name; saveLinks(list); }
+    }
+    save();
+    // avoid full repaint while focusing — light update counts
+    if (["todo","note","spark","month","quote","motto","clip","mind-item","mind-title","cat"].includes(kind)) {
+      // repaint to sync structure; re-find not needed
+      const selId = id;
+      const selKind = kind;
+      paint();
+      // no re-focus after save
+    }
+  }
+
+  function deleteByRef(kind, id, secId) {
+    if (kind === "todo" || kind === "note" || kind === "spark" || kind === "month" || kind === "quote" || kind === "motto" || kind === "clip") {
+      deleteItem(kind, id, secId, true);
+    } else if (kind === "mind-item") {
+      deleteItem("mind-item", id, secId, true);
+    }
+  }
+
+  function findAndRemove(bag, id, secId) {
+    let removed = null, meta = { bag, id, secId };
+    if (bag === "todo") {
+      const i = state.todos.findIndex(x => x.id === id);
+      if (i >= 0) { removed = state.todos.splice(i, 1)[0]; meta.index = i; }
+    } else if (bag === "note") {
+      const i = state.notes.findIndex(x => x.id === id);
+      if (i >= 0) { removed = state.notes.splice(i, 1)[0]; meta.index = i; }
+    } else if (bag === "spark") {
+      const i = state.sparks.findIndex(x => x.id === id);
+      if (i >= 0) { removed = state.sparks.splice(i, 1)[0]; meta.index = i; }
+    } else if (bag === "month") {
+      const i = state.month.findIndex(x => x.id === id);
+      if (i >= 0) { removed = state.month.splice(i, 1)[0]; meta.index = i; }
+    } else if (bag === "quote") {
+      const i = state.quotes.findIndex(x => x.id === id);
+      if (i >= 0) { removed = state.quotes.splice(i, 1)[0]; meta.index = i; }
+    } else if (bag === "motto") {
+      const i = state.mottos.findIndex(x => x.id === id);
+      if (i >= 0) { removed = state.mottos.splice(i, 1)[0]; meta.index = i; }
+    } else if (bag === "clip") {
+      const i = state.clips.findIndex(x => x.id === id);
+      if (i >= 0) { removed = state.clips.splice(i, 1)[0]; meta.index = i; }
+    } else if (bag === "mind-item") {
+      const sec = state.mind.find(s => s.id === secId);
+      if (sec) {
+        const i = sec.items.findIndex(x => x.id === id);
+        if (i >= 0) { removed = sec.items.splice(i, 1)[0]; meta.index = i; meta.secId = secId; }
+      }
+    } else if (bag === "mind") {
+      const i = state.mind.findIndex(x => x.id === id);
+      if (i >= 0) { removed = state.mind.splice(i, 1)[0]; meta.index = i; }
+    } else if (bag === "link") {
+      const list = getLinks();
+      const i = list.findIndex(x => x.id === id);
+      if (i >= 0) { removed = list.splice(i, 1)[0]; meta.index = i; saveLinks(list); linksCache = list; }
+    }
+    return removed ? { removed, meta } : null;
+  }
+
+  function restoreRemoved(pack) {
+    if (!pack) return;
+    const { removed, meta } = pack;
+    const i = meta.index ?? 0;
+    const bag = meta.bag;
+    if (bag === "todo") state.todos.splice(i, 0, removed);
+    else if (bag === "note") state.notes.splice(i, 0, removed);
+    else if (bag === "spark") state.sparks.splice(i, 0, removed);
+    else if (bag === "month") state.month.splice(i, 0, removed);
+    else if (bag === "quote") state.quotes.splice(i, 0, removed);
+    else if (bag === "motto") state.mottos.splice(i, 0, removed);
+    else if (bag === "clip") state.clips.splice(i, 0, removed);
+    else if (bag === "mind-item") {
+      const sec = state.mind.find(s => s.id === meta.secId);
+      if (sec) sec.items.splice(i, 0, removed);
+    } else if (bag === "mind") state.mind.splice(i, 0, removed);
+    else if (bag === "link") {
+      const list = getLinks();
+      list.splice(i, 0, removed);
+      saveLinks(list); linksCache = list;
+    }
+    save(); paint();
+  }
+
+  function deleteItem(bag, id, secId, silent) {
+    const pack = findAndRemove(bag, id, secId);
+    if (!pack) return;
+    save(); paint();
+    if (!silent) {
+      undoBag = pack;
+      showUndoToast();
+    }
+  }
+
+  function focusNew(sel) {
+    requestAnimationFrame(() => {
+      const el = document.querySelector(sel);
+      if (el) {
+        el.dataset.new = "1";
+        beginEdit(el);
+      }
+    });
+  }
+
+  function addInModule(type) {
+    if (editingEl) commitEdit(true);
+    const id = uid();
+    if (type === "todo") {
+      state.todos.unshift({ id, text: "", cat: "📌 收件", done: false, kind: "todo" });
+      save(); paint(); focusNew(`[data-edit="todo"][data-id="${id}"]`);
+    } else if (type === "note") {
+      state.notes.unshift({ id, text: "", kind: "note" });
+      save(); paint(); focusNew(`[data-edit="note"][data-id="${id}"]`);
+    } else if (type === "spark") {
+      state.sparks.unshift({ id, text: "", kind: "spark" });
+      save(); paint(); focusNew(`[data-edit="spark"][data-id="${id}"]`);
+    } else if (type === "month") {
+      state.month.push({ id, sec: "life", ico: "•", t: "", tags: [["life","生活"]], done: false });
+      save(); paint(); focusNew(`[data-edit="month"][data-id="${id}"]`);
+    } else if (type === "quote") {
+      const color = QUOTE_COLORS[state.quotes.length % QUOTE_COLORS.length];
+      state.quotes.push({ id, text: "", color });
+      save(); paint(); focusNew(`[data-edit="quote"][data-id="${id}"]`);
+    } else if (type === "motto") {
+      state.mottos.push({ id, text: "" });
+      save(); paint(); focusNew(`[data-edit="motto"][data-id="${id}"]`);
+    } else if (type === "clip") {
+      state.clips.push({ id, title: "", thumb: "./assets/clip-a.svg", href: "https://" });
+      save(); paint(); focusNew(`[data-edit="clip"][data-id="${id}"]`);
+    } else if (type === "mind") {
+      if (!state.mind.length) {
+        state.mind.push({ id: uid(), title: "新分组", ico: "📝", items: [] });
+      }
+      const sec = state.mind[0];
+      const itemId = uid();
+      sec.items.push({ id: itemId, text: "" });
+      save(); paint(); focusNew(`[data-edit="mind-item"][data-id="${itemId}"]`);
+    }
+  }
+
+  /* events */
   document.getElementById("captureForm").addEventListener("submit", e => {
     e.preventDefault();
     const input = document.getElementById("captureInput");
@@ -1077,6 +1596,12 @@
   });
   document.getElementById("toastChange").addEventListener("click", () => {
     document.getElementById("toast").classList.add("picking");
+  });
+  document.getElementById("toastUndo").addEventListener("click", () => {
+    if (!undoBag) return;
+    restoreRemoved(undoBag);
+    undoBag = null;
+    document.getElementById("toast").classList.remove("show", "undo-mode");
   });
   document.querySelector(".toast-picker").addEventListener("click", e => {
     const btn = e.target.closest("[data-kind]");
@@ -1099,6 +1624,28 @@
   });
 
   document.body.addEventListener("click", e => {
+    const addBtn = e.target.closest("[data-add]");
+    if (addBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      addInModule(addBtn.dataset.add);
+      return;
+    }
+    const del = e.target.closest("[data-del]");
+    if (del) {
+      e.preventDefault();
+      e.stopPropagation();
+      deleteItem(del.dataset.del, del.dataset.id, del.dataset.sec);
+      return;
+    }
+    const open = e.target.closest(".clip-open");
+    if (open) {
+      e.preventDefault();
+      e.stopPropagation();
+      const href = open.dataset.href;
+      if (href && /^https?:\/\//i.test(href)) window.open(href, "_blank", "noopener");
+      return;
+    }
     const jump = e.target.closest("[data-jump]");
     if (jump) {
       const el = document.getElementById(jump.dataset.jump);
@@ -1106,25 +1653,97 @@
       return;
     }
     const chk = e.target.closest(".check");
-    if (!chk) return;
-    if (chk.dataset.todo) {
-      const row = chk.closest("[data-id]");
-      const it = state.todos.find(t => t.id === row.dataset.id);
-      if (it) { it.done = !it.done; save(); paint(); }
+    if (chk) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (chk.dataset.todo) {
+        const row = chk.closest("[data-id]");
+        const it = state.todos.find(t => t.id === row.dataset.id);
+        if (it) { it.done = !it.done; save(); paint(); }
+        return;
+      }
+      if (chk.dataset.month) {
+        const row = chk.closest("[data-id]");
+        const it = state.month.find(t => t.id === row.dataset.id);
+        if (it) { it.done = !it.done; save(); paint(); }
+      }
       return;
     }
-    if (chk.dataset.month) {
-      const row = chk.closest("[data-id]");
-      const it = state.month.find(t => t.id === row.dataset.id);
-      if (it) { it.done = !it.done; save(); paint(); }
+    const ed = e.target.closest(".editable");
+    if (ed) {
+      if (ed.closest("a.links-item") && e.target.closest("a.links-item") && !e.metaKey) {
+        e.preventDefault();
+      }
+      if (ed.closest("summary")) e.preventDefault();
+      beginEdit(ed);
+      return;
+    }
+    // click blank → commit
+    if (editingEl) commitEdit(true);
+  });
+
+  document.body.addEventListener("keydown", e => {
+    if (!editingEl) return;
+    if (e.key === "Enter") {
+      e.preventDefault();
+      commitEdit(true);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      commitEdit(false);
     }
   });
+
+  document.body.addEventListener("focusout", e => {
+    if (!editingEl) return;
+    // only when the editable itself loses focus (ignore focus moving FROM the + button INTO it)
+    if (e.target !== editingEl) return;
+    const leaving = editingEl;
+    setTimeout(() => {
+      if (editingEl === leaving && document.activeElement !== leaving) commitEdit(true);
+    }, 120);
+  });
+
+  /* mobile swipe-left delete */
+  (function bindSwipe() {
+    let startX = 0, startY = 0, row = null, dx = 0, active = false;
+    const threshold = 72;
+    document.body.addEventListener("touchstart", e => {
+      if (window.matchMedia("(min-width:900px)").matches) return;
+      const t = e.target.closest(".swipeable");
+      if (!t || e.target.closest(".check, .mod-add, .clip-open, .editable.editing")) return;
+      row = t; startX = e.touches[0].clientX; startY = e.touches[0].clientY; dx = 0; active = true;
+      row.classList.add("swiping");
+    }, { passive: true });
+    document.body.addEventListener("touchmove", e => {
+      if (!active || !row) return;
+      const x = e.touches[0].clientX, y = e.touches[0].clientY;
+      const adx = x - startX, ady = y - startY;
+      if (Math.abs(ady) > Math.abs(adx)) { active = false; row.style.transform = ""; row.classList.remove("swiping"); row = null; return; }
+      dx = Math.min(0, adx);
+      row.style.transform = `translateX(${dx}px)`;
+    }, { passive: true });
+    document.body.addEventListener("touchend", () => {
+      if (!row) return;
+      row.classList.remove("swiping");
+      if (dx < -threshold) {
+        const bag = row.dataset.bag;
+        const id = row.dataset.id;
+        const sec = row.dataset.sec;
+        row.classList.add("swipe-out");
+        const target = row;
+        setTimeout(() => { if (bag) deleteItem(bag, id, sec); }, 180);
+      } else {
+        row.style.transform = "";
+      }
+      row = null; active = false; dx = 0;
+    });
+  })();
 
   document.getElementById("dockSearch").addEventListener("keydown", e => {
     if (e.key !== "Enter") return;
     const q = e.target.value.trim().toLowerCase();
     if (!q) return;
-    const hit = [...document.querySelectorAll(".row .t, .todo-item .txt, .mind-body li")].find(n => n.textContent.toLowerCase().includes(q));
+    const hit = [...document.querySelectorAll(".row .t, .todo-item .txt, .mind-li .txt, .quote.editable")].find(n => n.textContent.toLowerCase().includes(q));
     if (hit) hit.scrollIntoView({ behavior: "smooth", block: "center" });
   });
 
@@ -1137,25 +1756,21 @@
     apply(); matchMedia("(max-width:899px)").addEventListener("change", apply);
   })();
   greeting();
-  (function(){ const b = document.getElementById("monthBanner"); if (b) b.textContent = `${new Date().getMonth()+1} 月 · 少一点，做好一点`; })();
   paint();
-  paintEmptyChrome();
 
-  
-    function maybeDoorBreath() {
-      try {
-        if (localStorage.getItem("personal-hub-door-breathe-v2")) return;
-        localStorage.setItem("personal-hub-door-breathe-v2", "1");
-      } catch {}
-      const el = document.querySelector(".dock-bar");
-      if (!el) return;
-      el.classList.remove("breathe");
-      void el.offsetWidth;
-      el.classList.add("breathe");
-      el.addEventListener("animationend", () => el.classList.remove("breathe"), { once: true });
-    }
+  function maybeDoorBreath() {
+    try {
+      if (localStorage.getItem("personal-hub-door-breathe-v2")) return;
+      localStorage.setItem("personal-hub-door-breathe-v2", "1");
+    } catch {}
+    const el = document.querySelector(".dock-bar");
+    if (!el) return;
+    el.classList.remove("breathe");
+    void el.offsetWidth;
+    el.classList.add("breathe");
+    el.addEventListener("animationend", () => el.classList.remove("breathe"), { once: true });
+  }
 
-  // R16 long-press dock-bar → external links (mods OK; input/FAB untouched)
   (function bindDockLP() {
     const dock = document.querySelector('.dock');
     const bar = document.querySelector('.dock-bar');
@@ -1171,11 +1786,8 @@
       armed = false;
       dock.classList.remove('pressing');
       sheet.hidden = false;
-      if (reduce()) {
-        sheet.classList.add('open');
-      } else {
-        requestAnimationFrame(() => sheet.classList.add('open'));
-      }
+      if (reduce()) sheet.classList.add('open');
+      else requestAnimationFrame(() => sheet.classList.add('open'));
       maybeDoorBreath();
     };
     const close = () => {
@@ -1200,7 +1812,6 @@
       const wasArmed = armed;
       const wasOpen = openedByLP;
       clearPress();
-      // short tap on bar chrome (not mod) → focus search; don't open sheet
       if (wasArmed && !wasOpen && e && e.type === 'pointerup') {
         if (!e.target.closest('.mod, button, a')) {
           const input = document.getElementById('dockSearch');
@@ -1209,7 +1820,6 @@
       }
     };
     ['pointerup','pointercancel','pointerleave'].forEach(ev => bar.addEventListener(ev, endPress));
-    // after LP on a mod, swallow the click so jump doesn't fire
     dock.addEventListener('click', e => {
       if (!openedByLP) return;
       if (e.target.closest('.mod')) {
@@ -1227,48 +1837,13 @@
     let url = document.getElementById("linkUrl").value.trim();
     if (!name || !url) return;
     if (!/^https?:\/\//i.test(url)) return;
-    const list = loadLinks();
-    list.push({ name, url });
+    const list = getLinks();
+    list.push({ id: uid(), name, url });
     saveLinks(list);
+    linksCache = list;
     document.getElementById("linkName").value = "";
     document.getElementById("linkUrl").value = "";
-    const el = document.getElementById("linksList");
-    const i = list.length - 1;
-    const L = list[i];
-    const row = document.createElement("div");
-    row.className = "links-row entering";
-    row.innerHTML = `<a class="links-item" href="${esc(L.url)}" target="_blank" rel="noopener"><span>${esc(L.name)}</span><span>↗</span></a><button type="button" class="links-del" data-i="${i}" aria-label="删">×</button>`;
-    el.appendChild(row);
-    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduce) {
-      row.classList.add("in");
-      row.classList.remove("entering");
-    } else {
-      requestAnimationFrame(() => row.classList.add("in"));
-      setTimeout(() => { row.classList.remove("entering", "in"); }, 220);
-    }
-  });
-  document.getElementById("linksList").addEventListener("click", e => {
-    const btn = e.target.closest(".links-del");
-    if (!btn) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const row = btn.closest(".links-row");
-    const list = loadLinks();
-    const i = +btn.dataset.i;
-    if (i < 0 || i >= list.length) return;
-    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const finish = () => {
-      list.splice(i, 1);
-      saveLinks(list);
-      renderLinks();
-    };
-    if (!row || reduce) { finish(); return; }
-    row.classList.add("removing");
-    let done = false;
-    const once = () => { if (done) return; done = true; finish(); };
-    row.addEventListener("transitionend", once, { once: true });
-    setTimeout(once, 150);
+    renderLinks();
   });
 
 })();
