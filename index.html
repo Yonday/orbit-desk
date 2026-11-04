@@ -1131,7 +1131,7 @@
   function seedTodos() {
     const todos = [];
     Object.entries(TODO_SEED).forEach(([cat, items]) => {
-      items.forEach(t => todos.push({ id: uid(), text: t, cat, done: false, kind: "todo" }));
+      items.forEach(t => todos.push({ id: uid(), text: t, cat, done: false, kind: "todo", date: ymd(new Date()) }));
     });
     return todos;
   }
@@ -1154,23 +1154,22 @@
       return { label: lab, date, dayNum: d.getDate(), isToday: date === today };
     });
   }
-  function seedWeekItems() {
-    const days = weekDays();
-    const today = days.find(d => d.isToday) || days[0];
-    const fri = days[4];
-    const thu = days[3];
+  function todayYmd() { return ymd(new Date()); }
+  function seedWeekTodos() {
+    // a few dated todos on other days this week so the strip isn't blank
+    const days = weekDays().filter(d => !d.isToday);
+    const pick = i => days[Math.min(i, days.length - 1)].date;
     return [
-      { id: uid(), text: "整理本周节奏", date: today.date, done: false, kind: "week" },
-      { id: uid(), text: "回一封重要邮件", date: today.date, done: false, kind: "week" },
-      { id: uid(), text: "准备周会要点", date: (days[days.indexOf(today)+1] || thu).date, done: false, kind: "week" },
-      { id: uid(), text: "周五交稿", date: fri.date, done: false, kind: "week" },
+      { id: uid(), text: "整理本周节奏", cat: "💻 工作", date: pick(0), done: false, kind: "todo" },
+      { id: uid(), text: "交初稿", cat: "💻 工作", date: pick(3), done: false, kind: "todo" },
+      { id: uid(), text: "周末大扫除", cat: "🌟 生活", date: pick(5), done: false, kind: "todo" },
     ];
   }
   let selectedWeekDay = ymd(new Date());
 
   function seedFull() {
     return {
-      todos: seedTodos(),
+      todos: [...seedTodos(), ...seedWeekTodos()],
       notes: [
         { id: uid(), text: "https://www.notion.so 晚点细看", kind: "note" },
         { id: uid(), text: "会议纪要：只留决策和负责人", kind: "note" },
@@ -1194,8 +1193,7 @@
       monthBanner: `${new Date().getMonth()+1} 月 · 少一点，做好一点`,
       hidden: [],
       todoCats: [...SEED_CATS],
-      weekItems: seedWeekItems(),
-      _v: 2,
+      _v: 3,
     };
   }
 
@@ -1205,14 +1203,18 @@
     if (!Array.isArray(raw.notes)) raw.notes = [];
     if (!Array.isArray(raw.sparks)) raw.sparks = [];
     if (!Array.isArray(raw.month)) raw.month = [];
-    if (!Array.isArray(raw.weekItems)) raw.weekItems = [];
-    raw.weekItems = raw.weekItems.map(it => ({
-      id: it.id || uid(),
-      text: it.text || "",
-      date: it.date || ymd(new Date()),
-      done: !!it.done,
-      kind: "week",
-    }));
+    // v3: todos are the single source of truth; each carries a date
+    const t0 = ymd(new Date());
+    raw.todos.forEach(t => { if (!t.date || !/^\d{4}-\d{2}-\d{2}$/.test(t.date)) t.date = t0; if (!t.kind) t.kind = "todo"; });
+    if (Array.isArray(raw.weekItems)) {
+      const have = new Set(raw.todos.map(t => t.id));
+      raw.weekItems.forEach(w => {
+        if (!w || !String(w.text || "").trim()) return;
+        const id = w.id && !have.has(w.id) ? w.id : uid();
+        raw.todos.push({ id, text: w.text, cat: "📌 收件", date: w.date || t0, done: !!w.done, kind: "todo" });
+      });
+    }
+    delete raw.weekItems;
     if (!raw.profile) raw.profile = { ...PROFILE_SEED };
     if (!Array.isArray(raw.mottos)) raw.mottos = MOTTO_SEED.map(t => ({ id: uid(), text: t }));
     if (!Array.isArray(raw.quotes)) raw.quotes = QUOTES_SEED.map(q => ({ id: uid(), text: q.text, color: q.color }));
@@ -1236,7 +1238,7 @@
       raw.monthBanner = `${new Date().getMonth()+1} 月 · 少一点，做好一点`;
     }
     const nonEmpty = a => a.filter(x => String(x.text ?? x.t ?? x.title ?? "").trim());
-    ["todos","notes","sparks","quotes","mottos","clips","weekItems"].forEach(k => raw[k] = nonEmpty(raw[k]));
+    ["todos","notes","sparks","quotes","mottos","clips"].forEach(k => raw[k] = nonEmpty(raw[k]));
     raw.month = raw.month.filter(x => String(x.t || "").trim());
     raw.mind.forEach(sec => sec.items = nonEmpty(sec.items));
     raw._v = 2;
@@ -1245,7 +1247,7 @@
 
   function emptyState() {
     return {
-      todos: [], notes: [], sparks: [], month: [], weekItems: [],
+      todos: [], notes: [], sparks: [], month: [],
       profile: { ...PROFILE_SEED },
       mottos: [], quotes: [], clips: [], mind: [],
       monthBanner: `${new Date().getMonth()+1} 月 · 少一点，做好一点`,
@@ -1384,19 +1386,15 @@
     const list = document.getElementById("weekList");
     if (!strip || !list) return;
     strip.innerHTML = days.map(d => {
-      const open = (state.weekItems || []).filter(it => it.date === d.date && !it.done).length;
+      const open = todosOn(d.date).filter(t => !t.done).length;
       const cls = ["week-day", d.isToday ? "today" : "", d.date === selectedWeekDay ? "on" : ""].filter(Boolean).join(" ");
       const dot = open ? `<span class="wd-dot">${open > 9 ? "9+" : open}</span>` : "";
       return `<button type="button" class="${cls}" data-week-day="${d.date}" role="tab" aria-selected="${d.date === selectedWeekDay}" title="${d.date}">${dot}<span class="wd-lab">${d.label}</span><span class="wd-num">${d.dayNum}</span></button>`;
     }).join("");
-    const items = (state.weekItems || []).filter(it => it.date === selectedWeekDay);
-    list.innerHTML = items.length ? items.map(it => `
-      <div class="todo-item ${it.done ? "done" : ""} swipeable" data-bag="week" data-id="${it.id}">
-        <button type="button" class="check ${it.done ? "on" : ""}" data-week="1" aria-label="完成"></button>
-        <div class="txt editable" data-edit="week" data-id="${it.id}">${esc(it.text)}</div>
-        ${delBtn("week", it.id)}
-      </div>`).join("") : weekEmptyLine();
-    const weekOpen = (state.weekItems || []).filter(it => !it.done).length;
+    const isToday = selectedWeekDay === todayYmd();
+    list.innerHTML = todoGroupsHtml(todosOn(selectedWeekDay), selectedWeekDay, { allSeed: isToday, empty: weekEmptyLine() });
+    const inWeek = new Set(days.map(d => d.date));
+    const weekOpen = state.todos.filter(t => inWeek.has(t.date || todayYmd()) && !t.done).length;
     const wc = document.getElementById("weekCount");
     if (wc) wc.textContent = weekOpen;
     // keep today (or selected) roughly in view on mobile strip
@@ -1429,23 +1427,23 @@
     }).join("") || emptyLine();
   }
 
-  function todoCatKeys() {
+  function todoCatKeys(list) {
     const keys = [...(state.todoCats || [])];
-    state.todos.forEach(t => { const c = t.cat || "📌 收件"; if (!keys.includes(c)) keys.push(c); });
+    (list || state.todos).forEach(t => { const c = t.cat || "📌 收件"; if (!keys.includes(c)) keys.push(c); });
     return keys;
   }
-  function renderTodos() {
+  function todosOn(date) { return state.todos.filter(t => (t.date || todayYmd()) === date); }
+  /* one grouped renderer for 今日待办 and 本周 — same headings, ＋, rows */
+  function todoGroupsHtml(list, date, { allSeed, empty }) {
     const cats = {};
-    state.todos.forEach(t => {
-      const c = t.cat || "📌 收件";
-      (cats[c] = cats[c] || []).push(t);
-    });
-    const keys = todoCatKeys();
-    const todoHtml = (state.todos.length ? "" : emptyLine()) + keys.map(c => `
+    list.forEach(t => { const c = t.cat || "📌 收件"; (cats[c] = cats[c] || []).push(t); });
+    let keys = todoCatKeys(list);
+    if (!allSeed) keys = keys.filter(c => c === "📌 收件" || (cats[c] && cats[c].length));
+    return (list.length ? "" : empty) + keys.map(c => `
       <div class="cat" data-catbox="${esc(c)}">
         <div class="cat-hrow">
           <div class="cat-h editable" data-edit="cat" data-cat="${esc(c)}">${esc(c)}</div>
-          <button type="button" class="cat-add" data-add-cat="${esc(c)}" aria-label="添加" title="添加">＋</button>
+          <button type="button" class="cat-add" data-add-cat="${esc(c)}" data-date="${date}" aria-label="添加" title="添加">＋</button>
         </div>
         ${(cats[c] || []).map(t => `
           <div class="todo-item ${t.done ? "done" : ""} swipeable" data-bag="todo" data-id="${t.id}">
@@ -1454,8 +1452,12 @@
             ${delBtn("todo", t.id)}
           </div>`).join("")}
       </div>`).join("");
-    document.getElementById("todoCats").innerHTML = todoHtml || emptyLine();
-    document.getElementById("todoCount").textContent = state.todos.filter(t => !t.done).length;
+  }
+  function renderTodos() {
+    const today = todayYmd();
+    const list = todosOn(today);
+    document.getElementById("todoCats").innerHTML = todoGroupsHtml(list, today, { allSeed: true, empty: emptyLine() });
+    document.getElementById("todoCount").textContent = list.filter(t => !t.done).length;
   }
 
   function renderNotesSparks() {
@@ -1584,7 +1586,7 @@
 
   function addItem(text, kind, cat) {
     const id = uid();
-    if (kind === "todo") state.todos.unshift({ id, text, cat: cat || "📌 收件", done: false, kind });
+    if (kind === "todo") state.todos.unshift({ id, text, cat: cat || "📌 收件", date: todayYmd(), done: false, kind });
     else if (kind === "note") state.notes.unshift({ id, text, kind });
     else state.sparks.unshift({ id, text, kind });
     save(); paint(); showToast(kind, id);
@@ -1630,7 +1632,8 @@
     let sel = `[data-edit="${el.dataset.edit}"]`;
     if (el.dataset.id) sel += `[data-id="${CSS.escape(el.dataset.id)}"]`;
     if (el.dataset.cat) sel += `[data-cat="${CSS.escape(el.dataset.cat)}"]`;
-    return sel;
+    const scope = el.closest("#weekList") ? "#weekList " : el.closest("#todoCats") ? "#todoCats " : "";
+    return scope + sel;
   }
   function removeChips() {
     document.querySelectorAll(".cat-chips").forEach(c => {
@@ -1644,7 +1647,7 @@
     editCat = it.cat || "📌 收件";
     const box = document.createElement("div");
     box.className = "cat-chips";
-    box.innerHTML = todoCatKeys().map(c =>
+    box.innerHTML = todoCatKeys(state.todos).map(c =>
       `<button type="button" class="cat-chip${c === editCat ? " on" : ""}" data-chip="${esc(c)}" tabindex="-1">${esc(c)}</button>`).join("");
     row.classList.add("has-chips");
     row.appendChild(box);
@@ -1711,9 +1714,6 @@
     } else if (kind === "todo") {
       const it = state.todos.find(x => x.id === id);
       if (it) { if (!text) { deleteItem("todo", id); return; } it.text = text; if (chosenCat) it.cat = chosenCat; }
-    } else if (kind === "week") {
-      const it = (state.weekItems || []).find(x => x.id === id);
-      if (it) { if (!text) { deleteItem("week", id); return; } it.text = text; }
     } else if (kind === "note") {
       const it = state.notes.find(x => x.id === id);
       if (it) { if (!text) { deleteItem("note", id); return; } it.text = text; }
@@ -1762,7 +1762,7 @@
     }
     save();
     // avoid full repaint while focusing — light update counts
-    if (["todo","week","note","spark","month","quote","motto","clip","clip-url","mind-item","mind-title","cat"].includes(kind)) {
+    if (["todo","note","spark","month","quote","motto","clip","clip-url","mind-item","mind-title","cat"].includes(kind)) {
       // repaint to sync structure; re-find not needed
       const selId = id;
       const selKind = kind;
@@ -1772,7 +1772,7 @@
   }
 
   function deleteByRef(kind, id, secId) {
-    if (kind === "todo" || kind === "week" || kind === "note" || kind === "spark" || kind === "month" || kind === "quote" || kind === "motto" || kind === "clip") {
+    if (kind === "todo" || kind === "note" || kind === "spark" || kind === "month" || kind === "quote" || kind === "motto" || kind === "clip") {
       deleteItem(kind, id, secId, true);
     } else if (kind === "mind-item") {
       deleteItem("mind-item", id, secId, true);
@@ -1784,10 +1784,6 @@
     if (bag === "todo") {
       const i = state.todos.findIndex(x => x.id === id);
       if (i >= 0) { removed = state.todos.splice(i, 1)[0]; meta.index = i; }
-    } else if (bag === "week") {
-      if (!state.weekItems) state.weekItems = [];
-      const i = state.weekItems.findIndex(x => x.id === id);
-      if (i >= 0) { removed = state.weekItems.splice(i, 1)[0]; meta.index = i; }
     } else if (bag === "note") {
       const i = state.notes.findIndex(x => x.id === id);
       if (i >= 0) { removed = state.notes.splice(i, 1)[0]; meta.index = i; }
@@ -1831,7 +1827,6 @@
     const i = meta.index ?? 0;
     const bag = meta.bag;
     if (bag === "todo") state.todos.splice(i, 0, removed);
-    else if (bag === "week") { if (!state.weekItems) state.weekItems = []; state.weekItems.splice(i, 0, removed); }
     else if (bag === "note") state.notes.splice(i, 0, removed);
     else if (bag === "spark") state.sparks.splice(i, 0, removed);
     else if (bag === "month") state.month.splice(i, 0, removed);
@@ -1872,16 +1867,15 @@
     });
   }
 
-  function addInModule(type, cat) {
+  function addInModule(type, cat, date, scope) {
     if (editingEl) commitEdit(true);
     const id = uid();
-    if (type === "todo") {
-      state.todos.unshift({ id, text: "", cat: cat || "📌 收件", done: false, kind: "todo" });
-      save(); paint(); focusNew(`[data-edit="todo"][data-id="${id}"]`);
-    } else if (type === "week") {
-      if (!state.weekItems) state.weekItems = [];
-      state.weekItems.unshift({ id, text: "", date: selectedWeekDay, done: false, kind: "week" });
-      save(); paint(); focusNew(`[data-edit="week"][data-id="${id}"]`);
+    if (type === "todo" || type === "week") {
+      const inWeek = type === "week" || scope === "week";
+      const d = date || (type === "week" ? selectedWeekDay : todayYmd());
+      state.todos.unshift({ id, text: "", cat: cat || "📌 收件", date: d, done: false, kind: "todo" });
+      save(); paint();
+      focusNew(`${inWeek ? "#weekList" : "#todoCats"} [data-edit="todo"][data-id="${id}"]`);
     } else if (type === "note") {
       state.notes.unshift({ id, text: "", kind: "note" });
       save(); paint(); focusNew(`[data-edit="note"][data-id="${id}"]`);
@@ -1945,7 +1939,7 @@
     }
     if (!item) return;
     item.kind = kind;
-    if (kind === "todo") { item.cat = item.cat || "📌 收件"; state.todos.unshift(item); }
+    if (kind === "todo") { item.cat = item.cat || "📌 收件"; item.date = item.date || todayYmd(); state.todos.unshift(item); }
     else if (kind === "note") state.notes.unshift(item);
     else state.sparks.unshift(item);
     let few = {};
@@ -1971,7 +1965,7 @@
     const catAdd = e.target.closest("[data-add-cat]");
     if (catAdd) {
       e.preventDefault(); e.stopPropagation();
-      addInModule("todo", catAdd.dataset.addCat);
+      addInModule("todo", catAdd.dataset.addCat, catAdd.dataset.date, catAdd.closest("#weekList") ? "week" : "today");
       return;
     }
     const wday = e.target.closest("[data-week-day]");
@@ -2019,12 +2013,6 @@
       if (chk.dataset.todo) {
         const row = chk.closest("[data-id]");
         const it = state.todos.find(t => t.id === row.dataset.id);
-        if (it) { it.done = !it.done; save(); paint(); }
-        return;
-      }
-      if (chk.dataset.week) {
-        const row = chk.closest("[data-id]");
-        const it = (state.weekItems || []).find(t => t.id === row.dataset.id);
         if (it) { it.done = !it.done; save(); paint(); }
         return;
       }
