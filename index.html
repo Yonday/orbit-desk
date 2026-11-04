@@ -862,6 +862,23 @@
     font-size: 9px; font-weight: 700; line-height: 14px; text-align: center;
   }
   .week-list .todo-item { padding: 5px 0; }
+  .todo-item.todo-ghost {
+    opacity: 0.4;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
+  }
+  .todo-item.todo-ghost .txt {
+    color: var(--ink3);
+    text-decoration: none;
+    font-weight: 400;
+  }
+  .todo-item.todo-ghost .ghost-mark {
+    width: 16px; height: 16px; flex-shrink: 0;
+    border-radius: 50%; border: 1.5px solid #d0d0d4;
+    opacity: 0.55; margin-top: 1px;
+  }
   @media (max-width: 899px) {
     #sec-week { margin-top: 6px; }
     .week-strip {
@@ -1193,7 +1210,7 @@
       monthBanner: `${new Date().getMonth()+1} 月 · 少一点，做好一点`,
       hidden: [],
       todoCats: [...SEED_CATS],
-      _v: 3,
+      _v: 4,
     };
   }
 
@@ -1215,6 +1232,13 @@
       });
     }
     delete raw.weekItems;
+    // v8: undoned past todos roll to today; keep most recent rolledFrom for a faded week-day ghost
+    raw.todos.forEach(t => {
+      if (t.done) return;
+      if (!t.date || t.date >= t0) return;
+      t.rolledFrom = t.date;
+      t.date = t0;
+    });
     if (!raw.profile) raw.profile = { ...PROFILE_SEED };
     if (!Array.isArray(raw.mottos)) raw.mottos = MOTTO_SEED.map(t => ({ id: uid(), text: t }));
     if (!Array.isArray(raw.quotes)) raw.quotes = QUOTES_SEED.map(q => ({ id: uid(), text: q.text, color: q.color }));
@@ -1241,7 +1265,7 @@
     ["todos","notes","sparks","quotes","mottos","clips"].forEach(k => raw[k] = nonEmpty(raw[k]));
     raw.month = raw.month.filter(x => String(x.t || "").trim());
     raw.mind.forEach(sec => sec.items = nonEmpty(sec.items));
-    raw._v = 2;
+    raw._v = 4;
     return raw;
   }
 
@@ -1253,7 +1277,7 @@
       monthBanner: `${new Date().getMonth()+1} 月 · 少一点，做好一点`,
       hidden: [],
       todoCats: [...SEED_CATS],
-      _v: 2,
+      _v: 4,
     };
   }
 
@@ -1261,7 +1285,12 @@
     if (EMPTY_DEMO) return emptyState();
     try {
       const raw = JSON.parse(localStorage.getItem(KEY) || "null");
-      if (raw && Array.isArray(raw.todos) && Array.isArray(raw.month)) return migrate(raw);
+      if (raw && Array.isArray(raw.todos) && Array.isArray(raw.month)) {
+        const m = migrate(raw);
+        // persist rollover / migrations immediately so next open and storage stay in sync
+        try { localStorage.setItem(KEY, JSON.stringify(m)); } catch {}
+        return m;
+      }
     } catch {}
     return seedFull();
   }
@@ -1392,7 +1421,9 @@
       return `<button type="button" class="${cls}" data-week-day="${d.date}" role="tab" aria-selected="${d.date === selectedWeekDay}" title="${d.date}">${dot}<span class="wd-lab">${d.label}</span><span class="wd-num">${d.dayNum}</span></button>`;
     }).join("");
     const isToday = selectedWeekDay === todayYmd();
-    list.innerHTML = todoGroupsHtml(todosOn(selectedWeekDay), selectedWeekDay, { allSeed: isToday, empty: weekEmptyLine() });
+    const dayList = todosOn(selectedWeekDay);
+    const dayGhosts = isToday ? [] : ghostsOn(selectedWeekDay);
+    list.innerHTML = todoGroupsHtml(dayList, selectedWeekDay, { allSeed: isToday, empty: weekEmptyLine(), ghosts: dayGhosts });
     const inWeek = new Set(days.map(d => d.date));
     const weekOpen = state.todos.filter(t => inWeek.has(t.date || todayYmd()) && !t.done).length;
     const wc = document.getElementById("weekCount");
@@ -1433,13 +1464,21 @@
     return keys;
   }
   function todosOn(date) { return state.todos.filter(t => (t.date || todayYmd()) === date); }
+  /** Todos that rolled away from this date — faded non-interactive traces in 本周. */
+  function ghostsOn(date) {
+    return state.todos.filter(t => t.rolledFrom === date && (t.date || todayYmd()) !== date);
+  }
   /* one grouped renderer for 今日待办 and 本周 — same headings, ＋, rows */
-  function todoGroupsHtml(list, date, { allSeed, empty }) {
+  function todoGroupsHtml(list, date, { allSeed, empty, ghosts }) {
+    ghosts = ghosts || [];
     const cats = {};
     list.forEach(t => { const c = t.cat || "📌 收件"; (cats[c] = cats[c] || []).push(t); });
-    let keys = todoCatKeys(list);
-    if (!allSeed) keys = keys.filter(c => c === "📌 收件" || (cats[c] && cats[c].length));
-    return (list.length ? "" : empty) + keys.map(c => `
+    const ghostCats = {};
+    ghosts.forEach(t => { const c = t.cat || "📌 收件"; (ghostCats[c] = ghostCats[c] || []).push(t); });
+    let keys = todoCatKeys(list.length || ghosts.length ? [...list, ...ghosts] : list);
+    if (!allSeed) keys = keys.filter(c => c === "📌 收件" || (cats[c] && cats[c].length) || (ghostCats[c] && ghostCats[c].length));
+    const hasAny = list.length || ghosts.length;
+    return (hasAny ? "" : empty) + keys.map(c => `
       <div class="cat" data-catbox="${esc(c)}">
         <div class="cat-hrow">
           <div class="cat-h editable" data-edit="cat" data-cat="${esc(c)}">${esc(c)}</div>
@@ -1450,6 +1489,11 @@
             <button type="button" class="check ${t.done ? "on" : ""}" data-todo="1"></button>
             <div class="txt editable" data-edit="todo" data-id="${t.id}">${esc(t.text)}</div>
             ${delBtn("todo", t.id)}
+          </div>`).join("")}
+        ${(ghostCats[c] || []).map(t => `
+          <div class="todo-item todo-ghost" data-ghost="${t.id}" aria-hidden="true">
+            <span class="ghost-mark" aria-hidden="true"></span>
+            <div class="txt">${esc(t.text)}</div>
           </div>`).join("")}
       </div>`).join("");
   }
