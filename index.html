@@ -837,6 +837,41 @@
   @keyframes chipsIn { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; transform: none; } }
   @media (max-width: 899px) { .cat-chips { opacity: .85; } }
 
+  /* v5 week view */
+  #sec-week { margin-top: 8px; }
+  .week-strip {
+    display: flex; gap: 4px; margin: 2px 0 10px; padding-bottom: 2px;
+  }
+  .week-day {
+    flex: 1; min-width: 0; position: relative;
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
+    padding: 7px 2px 6px; border-radius: 10px;
+    font-size: 11px; color: var(--ink3); line-height: 1.2;
+    border: 1.5px solid transparent; background: transparent;
+    cursor: pointer; touch-action: manipulation;
+  }
+  .week-day .wd-lab { font-size: 10px; letter-spacing: 0.02em; }
+  .week-day .wd-num { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .week-day.on { background: rgba(0,113,227,.07); color: var(--accent); }
+  .week-day.on .wd-num { color: var(--accent); }
+  .week-day.today { border-color: var(--accent); }
+  .week-day .wd-dot {
+    position: absolute; top: 2px; right: 2px;
+    min-width: 14px; height: 14px; padding: 0 3px; box-sizing: border-box;
+    border-radius: 999px; background: #ff3b30; color: #fff;
+    font-size: 9px; font-weight: 700; line-height: 14px; text-align: center;
+  }
+  .week-list .todo-item { padding: 5px 0; }
+  @media (max-width: 899px) {
+    #sec-week { margin-top: 6px; }
+    .week-strip {
+      overflow-x: auto; gap: 6px; scroll-snap-type: x proximity;
+      -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    }
+    .week-strip::-webkit-scrollbar { display: none; }
+    .week-day { flex: 0 0 46px; scroll-snap-align: center; padding: 8px 4px; }
+  }
+
   /* v2b module hide / clip url */
   .card[hidden] { display: none !important; }
   .mid-duo:has(> .card[hidden]) { grid-template-columns: 1fr; }
@@ -917,6 +952,11 @@
             <div class="media" id="clipList"></div>
           </div>
         </div>
+        <div class="card section-jump" id="sec-week">
+          <h2>本周 <span class="count" id="weekCount">0</span><button type="button" class="mod-add" data-add="week" aria-label="添加" title="添加">＋</button></h2>
+          <div class="week-strip" id="weekStrip" role="tablist" aria-label="本周"></div>
+          <div class="week-list" id="weekList"></div>
+        </div>
         <main class="card section-jump col-main" id="sec-month">
           <div class="month-head">
             <div>
@@ -955,6 +995,7 @@
     <div class="dock-bar">
       <div class="mods" id="mods">
         <button type="button" class="mod" data-jump="sec-todo" title="今日待办">✅</button>
+        <button type="button" class="mod" data-jump="sec-week" title="本周">📆</button>
         <button type="button" class="mod" data-jump="sec-month" title="月计划">📅</button>
         <button type="button" class="mod" data-jump="sec-note" title="小记">📝<span class="badge" id="bNote" hidden>0</span></button>
         <button type="button" class="mod" data-jump="sec-spark" title="灵感">✨<span class="badge" id="bSpark" hidden>0</span></button>
@@ -1067,6 +1108,7 @@
   const MODULES = {
     todo:  { sec: "sec-todo",  name: "待办" },
     clip:  { sec: "sec-clip",  name: "剪藏" },
+    week:  { sec: "sec-week",  name: "本周" },
     month: { sec: "sec-month", name: "月计划" },
     quote: { sec: "sec-quote", name: "提醒" },
     mind:  { sec: "sec-mind",  name: "Mind" },
@@ -1093,6 +1135,38 @@
     });
     return todos;
   }
+  function ymd(d) {
+    const x = d instanceof Date ? d : new Date(d);
+    return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,"0")}-${String(x.getDate()).padStart(2,"0")}`;
+  }
+  function startOfWeek(d = new Date()) {
+    const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const day = x.getDay();
+    x.setDate(x.getDate() + (day === 0 ? -6 : 1 - day));
+    return x;
+  }
+  function weekDays() {
+    const start = startOfWeek();
+    const today = ymd(new Date());
+    return ["一","二","三","四","五","六","日"].map((lab, i) => {
+      const d = new Date(start); d.setDate(start.getDate() + i);
+      const date = ymd(d);
+      return { label: lab, date, dayNum: d.getDate(), isToday: date === today };
+    });
+  }
+  function seedWeekItems() {
+    const days = weekDays();
+    const today = days.find(d => d.isToday) || days[0];
+    const fri = days[4];
+    const thu = days[3];
+    return [
+      { id: uid(), text: "整理本周节奏", date: today.date, done: false, kind: "week" },
+      { id: uid(), text: "回一封重要邮件", date: today.date, done: false, kind: "week" },
+      { id: uid(), text: "准备周会要点", date: (days[days.indexOf(today)+1] || thu).date, done: false, kind: "week" },
+      { id: uid(), text: "周五交稿", date: fri.date, done: false, kind: "week" },
+    ];
+  }
+  let selectedWeekDay = ymd(new Date());
 
   function seedFull() {
     return {
@@ -1120,6 +1194,7 @@
       monthBanner: `${new Date().getMonth()+1} 月 · 少一点，做好一点`,
       hidden: [],
       todoCats: [...SEED_CATS],
+      weekItems: seedWeekItems(),
       _v: 2,
     };
   }
@@ -1130,6 +1205,14 @@
     if (!Array.isArray(raw.notes)) raw.notes = [];
     if (!Array.isArray(raw.sparks)) raw.sparks = [];
     if (!Array.isArray(raw.month)) raw.month = [];
+    if (!Array.isArray(raw.weekItems)) raw.weekItems = [];
+    raw.weekItems = raw.weekItems.map(it => ({
+      id: it.id || uid(),
+      text: it.text || "",
+      date: it.date || ymd(new Date()),
+      done: !!it.done,
+      kind: "week",
+    }));
     if (!raw.profile) raw.profile = { ...PROFILE_SEED };
     if (!Array.isArray(raw.mottos)) raw.mottos = MOTTO_SEED.map(t => ({ id: uid(), text: t }));
     if (!Array.isArray(raw.quotes)) raw.quotes = QUOTES_SEED.map(q => ({ id: uid(), text: q.text, color: q.color }));
@@ -1153,7 +1236,7 @@
       raw.monthBanner = `${new Date().getMonth()+1} 月 · 少一点，做好一点`;
     }
     const nonEmpty = a => a.filter(x => String(x.text ?? x.t ?? x.title ?? "").trim());
-    ["todos","notes","sparks","quotes","mottos","clips"].forEach(k => raw[k] = nonEmpty(raw[k]));
+    ["todos","notes","sparks","quotes","mottos","clips","weekItems"].forEach(k => raw[k] = nonEmpty(raw[k]));
     raw.month = raw.month.filter(x => String(x.t || "").trim());
     raw.mind.forEach(sec => sec.items = nonEmpty(sec.items));
     raw._v = 2;
@@ -1162,7 +1245,7 @@
 
   function emptyState() {
     return {
-      todos: [], notes: [], sparks: [], month: [],
+      todos: [], notes: [], sparks: [], month: [], weekItems: [],
       profile: { ...PROFILE_SEED },
       mottos: [], quotes: [], clips: [], mind: [],
       monthBanner: `${new Date().getMonth()+1} 月 · 少一点，做好一点`,
@@ -1291,6 +1374,37 @@
       </div>`).join("");
   }
 
+  function weekEmptyLine() {
+    return '<div class="empty-line">还没写</div>';
+  }
+  function renderWeek() {
+    const days = weekDays();
+    if (!days.some(d => d.date === selectedWeekDay)) selectedWeekDay = (days.find(d => d.isToday) || days[0]).date;
+    const strip = document.getElementById("weekStrip");
+    const list = document.getElementById("weekList");
+    if (!strip || !list) return;
+    strip.innerHTML = days.map(d => {
+      const open = (state.weekItems || []).filter(it => it.date === d.date && !it.done).length;
+      const cls = ["week-day", d.isToday ? "today" : "", d.date === selectedWeekDay ? "on" : ""].filter(Boolean).join(" ");
+      const dot = open ? `<span class="wd-dot">${open > 9 ? "9+" : open}</span>` : "";
+      return `<button type="button" class="${cls}" data-week-day="${d.date}" role="tab" aria-selected="${d.date === selectedWeekDay}" title="${d.date}">${dot}<span class="wd-lab">${d.label}</span><span class="wd-num">${d.dayNum}</span></button>`;
+    }).join("");
+    const items = (state.weekItems || []).filter(it => it.date === selectedWeekDay);
+    list.innerHTML = items.length ? items.map(it => `
+      <div class="todo-item ${it.done ? "done" : ""} swipeable" data-bag="week" data-id="${it.id}">
+        <button type="button" class="check ${it.done ? "on" : ""}" data-week="1" aria-label="完成"></button>
+        <div class="txt editable" data-edit="week" data-id="${it.id}">${esc(it.text)}</div>
+        ${delBtn("week", it.id)}
+      </div>`).join("") : weekEmptyLine();
+    const weekOpen = (state.weekItems || []).filter(it => !it.done).length;
+    const wc = document.getElementById("weekCount");
+    if (wc) wc.textContent = weekOpen;
+    // keep today (or selected) roughly in view on mobile strip
+    requestAnimationFrame(() => {
+      const on = strip.querySelector(".week-day.on");
+      if (on) try { on.scrollIntoView({ inline: "center", block: "nearest", behavior: "auto" }); } catch {}
+    });
+  }
   function renderMonth() {
     const banner = document.getElementById("monthBanner");
     if (banner && !banner.classList.contains("editing")) {
@@ -1502,6 +1616,7 @@
     renderProfile();
     renderQuotes();
     renderMonth();
+    renderWeek();
     renderTodos();
     renderNotesSparks();
     renderClips();
@@ -1596,6 +1711,9 @@
     } else if (kind === "todo") {
       const it = state.todos.find(x => x.id === id);
       if (it) { if (!text) { deleteItem("todo", id); return; } it.text = text; if (chosenCat) it.cat = chosenCat; }
+    } else if (kind === "week") {
+      const it = (state.weekItems || []).find(x => x.id === id);
+      if (it) { if (!text) { deleteItem("week", id); return; } it.text = text; }
     } else if (kind === "note") {
       const it = state.notes.find(x => x.id === id);
       if (it) { if (!text) { deleteItem("note", id); return; } it.text = text; }
@@ -1644,7 +1762,7 @@
     }
     save();
     // avoid full repaint while focusing — light update counts
-    if (["todo","note","spark","month","quote","motto","clip","clip-url","mind-item","mind-title","cat"].includes(kind)) {
+    if (["todo","week","note","spark","month","quote","motto","clip","clip-url","mind-item","mind-title","cat"].includes(kind)) {
       // repaint to sync structure; re-find not needed
       const selId = id;
       const selKind = kind;
@@ -1654,7 +1772,7 @@
   }
 
   function deleteByRef(kind, id, secId) {
-    if (kind === "todo" || kind === "note" || kind === "spark" || kind === "month" || kind === "quote" || kind === "motto" || kind === "clip") {
+    if (kind === "todo" || kind === "week" || kind === "note" || kind === "spark" || kind === "month" || kind === "quote" || kind === "motto" || kind === "clip") {
       deleteItem(kind, id, secId, true);
     } else if (kind === "mind-item") {
       deleteItem("mind-item", id, secId, true);
@@ -1666,6 +1784,10 @@
     if (bag === "todo") {
       const i = state.todos.findIndex(x => x.id === id);
       if (i >= 0) { removed = state.todos.splice(i, 1)[0]; meta.index = i; }
+    } else if (bag === "week") {
+      if (!state.weekItems) state.weekItems = [];
+      const i = state.weekItems.findIndex(x => x.id === id);
+      if (i >= 0) { removed = state.weekItems.splice(i, 1)[0]; meta.index = i; }
     } else if (bag === "note") {
       const i = state.notes.findIndex(x => x.id === id);
       if (i >= 0) { removed = state.notes.splice(i, 1)[0]; meta.index = i; }
@@ -1709,6 +1831,7 @@
     const i = meta.index ?? 0;
     const bag = meta.bag;
     if (bag === "todo") state.todos.splice(i, 0, removed);
+    else if (bag === "week") { if (!state.weekItems) state.weekItems = []; state.weekItems.splice(i, 0, removed); }
     else if (bag === "note") state.notes.splice(i, 0, removed);
     else if (bag === "spark") state.sparks.splice(i, 0, removed);
     else if (bag === "month") state.month.splice(i, 0, removed);
@@ -1755,6 +1878,10 @@
     if (type === "todo") {
       state.todos.unshift({ id, text: "", cat: cat || "📌 收件", done: false, kind: "todo" });
       save(); paint(); focusNew(`[data-edit="todo"][data-id="${id}"]`);
+    } else if (type === "week") {
+      if (!state.weekItems) state.weekItems = [];
+      state.weekItems.unshift({ id, text: "", date: selectedWeekDay, done: false, kind: "week" });
+      save(); paint(); focusNew(`[data-edit="week"][data-id="${id}"]`);
     } else if (type === "note") {
       state.notes.unshift({ id, text: "", kind: "note" });
       save(); paint(); focusNew(`[data-edit="note"][data-id="${id}"]`);
@@ -1847,6 +1974,14 @@
       addInModule("todo", catAdd.dataset.addCat);
       return;
     }
+    const wday = e.target.closest("[data-week-day]");
+    if (wday) {
+      e.preventDefault(); e.stopPropagation();
+      if (editingEl) commitEdit(true);
+      selectedWeekDay = wday.dataset.weekDay;
+      renderWeek();
+      return;
+    }
     const addBtn = e.target.closest("[data-add]");
     if (addBtn) {
       e.preventDefault();
@@ -1884,6 +2019,12 @@
       if (chk.dataset.todo) {
         const row = chk.closest("[data-id]");
         const it = state.todos.find(t => t.id === row.dataset.id);
+        if (it) { it.done = !it.done; save(); paint(); }
+        return;
+      }
+      if (chk.dataset.week) {
+        const row = chk.closest("[data-id]");
+        const it = (state.weekItems || []).find(t => t.id === row.dataset.id);
         if (it) { it.done = !it.done; save(); paint(); }
         return;
       }
