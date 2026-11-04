@@ -1186,19 +1186,57 @@
     localStorage.setItem(KEY, JSON.stringify(state));
   }
 
+  function looksLikeUrl(raw) {
+    const t = String(raw || "").trim().toLowerCase();
+    return /https?:\/\//i.test(raw) || /\bwww\./i.test(t) || /\b[\w-]+\.(com|cn|io|app|dev|net|org|pro|me|co)(\/\S*)?\b/i.test(raw);
+  }
   function classify(raw) {
     raw = String(raw || "").trim();
-    const t = raw.toLowerCase();
     let few = {};
     try { few = JSON.parse(localStorage.getItem(FEW) || "{}"); } catch {}
     if (few[raw]) return few[raw];
-    if (/https?:\/\//i.test(raw) || /\bwww\./i.test(t) || /\b[\w-]+\.(com|cn|io|app|dev|net|org|pro|me|co)(\/\S*)?\b/i.test(raw)) return "note";
+    if (looksLikeUrl(raw)) return "note";
     if (/\p{Extended_Pictographic}/u.test(raw) && /^[\p{Extended_Pictographic}\p{Emoji_Presentation}\uFE0F\s]+$/u.test(raw)) return "spark";
     if (/[？?]/.test(raw)) return "spark";
     if (/^(要不要|要不要去|去不去|要不要试试)/.test(raw) || /去哪|怎么办|什么好|好不好/.test(raw)) return "spark";
     if (/记得买/.test(raw) || /买票|买菜|买咖啡|买牛奶/.test(raw) || /^(买|要买|去买|顺便买)/.test(raw) || /(^|[\s，,])买/.test(raw)) return "todo";
     if (/明天|后天|今晚|下周/.test(raw) && /(看|做|交|写|回|处理)/.test(raw) && !/[？?]/.test(raw)) return "todo";
     return "todo";
+  }
+  const BARE_CAT_LABELS = ["收件", "工作", "生活", "学习"];
+  function escapeRe(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+  function resolveCatTitles() {
+    const titles = [...(state.todoCats && state.todoCats.length ? state.todoCats : SEED_CATS)];
+    state.todos.forEach(t => {
+      const c = t.cat || "📌 收件";
+      if (!titles.includes(c)) titles.push(c);
+    });
+    return titles;
+  }
+  /** If text starts with a known category + ：/: , return { cat, text } (stripped). Null for URLs. */
+  function parseCatPrefix(raw) {
+    raw = String(raw || "").trim();
+    if (!raw || looksLikeUrl(raw)) return null;
+    const titles = resolveCatTitles();
+    const aliases = [];
+    titles.forEach(c => {
+      aliases.push([c, c]);
+      const bare = c.replace(/^\p{Extended_Pictographic}\uFE0F?\s*/u, "").trim();
+      if (bare) aliases.push([bare, c]);
+    });
+    BARE_CAT_LABELS.forEach((b, i) => {
+      const cat = (state.todoCats && state.todoCats[i]) || SEED_CATS[i];
+      aliases.push([b, cat]);
+    });
+    aliases.sort((a, b) => b[0].length - a[0].length);
+    const seen = new Set();
+    for (const [label, cat] of aliases) {
+      if (!label || seen.has(label)) continue;
+      seen.add(label);
+      const m = raw.match(new RegExp("^" + escapeRe(label) + "\\s*[：:]\\s*(.*)$"));
+      if (m) return { cat, text: (m[1] || "").trim() };
+    }
+    return null;
   }
 
   function esc(s) {
@@ -1426,13 +1464,23 @@
   function showUndoToast() {
     toast({ msg: "已删除 ·", ms: 5000, action: { label: "撤销", fn: () => { if (undoBag) restoreRemoved(undoBag); undoBag = null; } } });
   }
+  function showHideToast() {
+    toast({ msg: "已收起 ·", ms: 5000, action: { label: "恢复", fn: () => { if (undoBag) restoreRemoved(undoBag); undoBag = null; } } });
+  }
 
-  function addItem(text, kind) {
+  function addItem(text, kind, cat) {
     const id = uid();
-    if (kind === "todo") state.todos.unshift({ id, text, cat: "📌 收件", done: false, kind });
+    if (kind === "todo") state.todos.unshift({ id, text, cat: cat || "📌 收件", done: false, kind });
     else if (kind === "note") state.notes.unshift({ id, text, kind });
     else state.sparks.unshift({ id, text, kind });
     save(); paint(); showToast(kind, id);
+  }
+  function captureText(raw) {
+    const text = String(raw || "").trim();
+    if (!text) return;
+    const pref = parseCatPrefix(text);
+    if (pref) { addItem(pref.text, "todo", pref.cat); return; }
+    addItem(text, classify(text));
   }
 
   function applyHidden() {
@@ -1686,7 +1734,8 @@
     save(); paint();
     if (!silent) {
       undoBag = pack;
-      showUndoToast();
+      if (bag === "module") showHideToast();
+      else showUndoToast();
     }
   }
 
@@ -1742,7 +1791,7 @@
     const input = document.getElementById("captureInput");
     const text = input.value.trim();
     if (!text) return;
-    addItem(text, classify(text));
+    captureText(text);
     input.value = "";
   });
   document.getElementById("fabAdd").addEventListener("click", () => {
