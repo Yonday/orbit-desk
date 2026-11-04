@@ -1232,7 +1232,8 @@
       });
     }
     delete raw.weekItems;
-    // v8/v9: undoned past todos roll to today; rolledFrom = original start day (set once, never overwrite)
+    // v8/v9/v10: undoned past todos roll to today; rolledFrom = original start day (set once, never overwrite);
+    // v10: done items no longer render as ghosts on rolledFrom day
     raw.todos.forEach(t => {
       if (t.done) return;
       if (!t.date || t.date >= t0) return;
@@ -1464,9 +1465,12 @@
     return keys;
   }
   function todosOn(date) { return state.todos.filter(t => (t.date || todayYmd()) === date); }
-  /** Todos that rolled away from this date — faded non-interactive traces in 本周. */
+  /** Todos that rolled away from this date — faded non-interactive traces in 本周.
+   *  v10: hide ghosts for done/deleted items (deleted are already absent from state). */
   function ghostsOn(date) {
-    return state.todos.filter(t => t.rolledFrom === date && (t.date || todayYmd()) !== date);
+    return state.todos.filter(t =>
+      !t.done && t.rolledFrom === date && (t.date || todayYmd()) !== date
+    );
   }
   /* one grouped renderer for 今日待办 and 本周 — same headings, ＋, rows */
   function todoGroupsHtml(list, date, { allSeed, empty, ghosts }) {
