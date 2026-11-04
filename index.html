@@ -807,6 +807,36 @@
 
   .cat-h.editable { display: inline-block; }
 
+  /* v3 category + and chips */
+  .cat-hrow { display: flex; align-items: center; gap: 2px; margin-bottom: 6px; }
+  .cat-hrow .cat-h { margin-bottom: 0; }
+  .cat-add {
+    width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0;
+    color: var(--ink3); font-size: 13px; line-height: 1;
+    display: grid; place-items: center; opacity: 0;
+    transition: opacity .15s var(--ease), background .15s;
+  }
+  @media (hover: hover) and (min-width: 900px) {
+    .cat:hover .cat-add { opacity: 0.45; }
+    .cat-add:hover { opacity: 1 !important; background: var(--line); }
+  }
+  @media (max-width: 899px) { .cat-add { opacity: 0.35; } }
+  .cat-empty { font-size: 12px; color: var(--ink3); padding: 0 0 2px; }
+  #todoCats .empty-line { padding: 2px 0 10px; }
+  .todo-item.has-chips { flex-wrap: wrap; }
+  .cat-chips {
+    flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 4px;
+    padding: 4px 0 2px 26px; animation: chipsIn .18s var(--ease) both;
+  }
+  .cat-chip {
+    font-size: 11px; line-height: 1; padding: 4px 7px; border-radius: 999px;
+    color: var(--ink3); background: transparent; border: 1px solid var(--line);
+    touch-action: manipulation;
+  }
+  .cat-chip.on { color: var(--accent); border-color: var(--accent); background: rgba(0,113,227,.06); }
+  @keyframes chipsIn { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; transform: none; } }
+  @media (max-width: 899px) { .cat-chips { opacity: .85; } }
+
   /* v2b module hide / clip url */
   .card[hidden] { display: none !important; }
   .mid-duo:has(> .card[hidden]) { grid-template-columns: 1fr; }
@@ -987,6 +1017,7 @@
     { sec: "life", ico: "🧹", t: "收拾一次书桌", tags: [["life","生活"]], done: false },
   ];
 
+  const SEED_CATS = ["📌 收件", "💻 工作", "🌟 生活", "🤖 学习"];
   const TODO_SEED = {
     "💻 工作": ["回复两封邮件", "整理本周计划", "准备周会要点"],
     "🌟 生活": ["晚间散步 30 分", "买牛奶", "给植物浇水"],
@@ -1051,6 +1082,7 @@
   let undoBag = null;
   let editingEl = null;
   let editOrig = "";
+  let editCat = null;
 
   function uid() { return Math.random().toString(36).slice(2, 10); }
 
@@ -1087,6 +1119,7 @@
       })),
       monthBanner: `${new Date().getMonth()+1} 月 · 少一点，做好一点`,
       hidden: [],
+      todoCats: [...SEED_CATS],
       _v: 2,
     };
   }
@@ -1115,6 +1148,7 @@
       });
     }
     if (!Array.isArray(raw.hidden)) raw.hidden = [];
+    if (!Array.isArray(raw.todoCats)) raw.todoCats = [...SEED_CATS];
     if (typeof raw.monthBanner !== "string") {
       raw.monthBanner = `${new Date().getMonth()+1} 月 · 少一点，做好一点`;
     }
@@ -1133,6 +1167,7 @@
       mottos: [], quotes: [], clips: [], mind: [],
       monthBanner: `${new Date().getMonth()+1} 月 · 少一点，做好一点`,
       hidden: [],
+      todoCats: [...SEED_CATS],
       _v: 2,
     };
   }
@@ -1242,17 +1277,25 @@
     }).join("") || emptyLine();
   }
 
+  function todoCatKeys() {
+    const keys = [...(state.todoCats || [])];
+    state.todos.forEach(t => { const c = t.cat || "📌 收件"; if (!keys.includes(c)) keys.push(c); });
+    return keys;
+  }
   function renderTodos() {
     const cats = {};
     state.todos.forEach(t => {
       const c = t.cat || "📌 收件";
       (cats[c] = cats[c] || []).push(t);
     });
-    const keys = Object.keys(cats);
-    const todoHtml = keys.map(c => `
-      <div class="cat">
-        <div class="cat-h editable" data-edit="cat" data-cat="${esc(c)}">${esc(c)}</div>
-        ${cats[c].map(t => `
+    const keys = todoCatKeys();
+    const todoHtml = (state.todos.length ? "" : emptyLine()) + keys.map(c => `
+      <div class="cat" data-catbox="${esc(c)}">
+        <div class="cat-hrow">
+          <div class="cat-h editable" data-edit="cat" data-cat="${esc(c)}">${esc(c)}</div>
+          <button type="button" class="cat-add" data-add-cat="${esc(c)}" aria-label="添加" title="添加">＋</button>
+        </div>
+        ${(cats[c] || []).map(t => `
           <div class="todo-item ${t.done ? "done" : ""} swipeable" data-bag="todo" data-id="${t.id}">
             <button type="button" class="check ${t.done ? "on" : ""}" data-todo="1"></button>
             <div class="txt editable" data-edit="todo" data-id="${t.id}">${esc(t.text)}</div>
@@ -1426,6 +1469,23 @@
     if (el.dataset.cat) sel += `[data-cat="${CSS.escape(el.dataset.cat)}"]`;
     return sel;
   }
+  function removeChips() {
+    document.querySelectorAll(".cat-chips").forEach(c => {
+      c.parentElement && c.parentElement.classList.remove("has-chips"); c.remove();
+    });
+  }
+  function showChips(el) {
+    const it = state.todos.find(x => x.id === el.dataset.id);
+    const row = el.closest(".todo-item");
+    if (!it || !row) return;
+    editCat = it.cat || "📌 收件";
+    const box = document.createElement("div");
+    box.className = "cat-chips";
+    box.innerHTML = todoCatKeys().map(c =>
+      `<button type="button" class="cat-chip${c === editCat ? " on" : ""}" data-chip="${esc(c)}" tabindex="-1">${esc(c)}</button>`).join("");
+    row.classList.add("has-chips");
+    row.appendChild(box);
+  }
   function beginEdit(el) {
     if (!el || el.classList.contains("editing")) return;
     if (editingEl && editingEl !== el) {
@@ -1436,8 +1496,10 @@
     }
     editingEl = el;
     editOrig = el.textContent;
+    editCat = null;
     el.contentEditable = "true";
     el.classList.add("editing");
+    if (el.dataset.edit === "todo") showChips(el);
     el.focus();
     try {
       const range = document.createRange();
@@ -1458,6 +1520,8 @@
     el.contentEditable = "false";
     el.classList.remove("editing");
     editingEl = null;
+    const chosenCat = editCat; editCat = null;
+    removeChips();
 
     if (!saveIt) {
       if (el.dataset.new === "1") { deleteByRef(kind, id, el.dataset.sec); return; }
@@ -1483,7 +1547,7 @@
       el.textContent = state.monthBanner;
     } else if (kind === "todo") {
       const it = state.todos.find(x => x.id === id);
-      if (it) { if (!text) { deleteItem("todo", id); return; } it.text = text; }
+      if (it) { if (!text) { deleteItem("todo", id); return; } it.text = text; if (chosenCat) it.cat = chosenCat; }
     } else if (kind === "note") {
       const it = state.notes.find(x => x.id === id);
       if (it) { if (!text) { deleteItem("note", id); return; } it.text = text; }
@@ -1521,7 +1585,10 @@
       const oldCat = el.dataset.cat;
       if (text && text !== oldCat) {
         state.todos.forEach(t => { if (t.cat === oldCat) t.cat = text; });
-      }
+        const tc = state.todoCats || (state.todoCats = []);
+        const i = tc.indexOf(oldCat);
+        if (i >= 0) { if (tc.includes(text)) tc.splice(i, 1); else tc[i] = text; }
+      } else if (!text) el.textContent = oldCat;
     } else if (kind === "link-name") {
       const list = getLinks();
       const it = list.find(x => x.id === id);
@@ -1633,11 +1700,11 @@
     });
   }
 
-  function addInModule(type) {
+  function addInModule(type, cat) {
     if (editingEl) commitEdit(true);
     const id = uid();
     if (type === "todo") {
-      state.todos.unshift({ id, text: "", cat: "📌 收件", done: false, kind: "todo" });
+      state.todos.unshift({ id, text: "", cat: cat || "📌 收件", done: false, kind: "todo" });
       save(); paint(); focusNew(`[data-edit="todo"][data-id="${id}"]`);
     } else if (type === "note") {
       state.notes.unshift({ id, text: "", kind: "note" });
@@ -1711,7 +1778,26 @@
     save(); paint(); showToast(kind, item.id);
   });
 
+  // chips: keep focus in the editable (no blur-save race)
+  ["pointerdown", "mousedown"].forEach(t => document.body.addEventListener(t, e => {
+    if (e.target.closest(".cat-chip")) e.preventDefault();
+  }));
   document.body.addEventListener("click", e => {
+    const chip = e.target.closest(".cat-chip");
+    if (chip) {
+      e.preventDefault(); e.stopPropagation();
+      if (!editingEl) return;
+      editCat = chip.dataset.chip;
+      chip.parentElement.querySelectorAll(".cat-chip").forEach(b => b.classList.toggle("on", b === chip));
+      if (document.activeElement !== editingEl) editingEl.focus();
+      return;
+    }
+    const catAdd = e.target.closest("[data-add-cat]");
+    if (catAdd) {
+      e.preventDefault(); e.stopPropagation();
+      addInModule("todo", catAdd.dataset.addCat);
+      return;
+    }
     const addBtn = e.target.closest("[data-add]");
     if (addBtn) {
       e.preventDefault();
@@ -1788,6 +1874,7 @@
     if (!editingEl) return;
     // only when the editable itself loses focus (ignore focus moving FROM the + button INTO it)
     if (e.target !== editingEl) return;
+    if (e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest(".cat-chips")) return;
     const leaving = editingEl;
     setTimeout(() => {
       if (editingEl === leaving && document.activeElement !== leaving) commitEdit(true);
@@ -1802,7 +1889,7 @@
     document.body.addEventListener("touchstart", e => {
       if (window.matchMedia("(min-width:900px)").matches || e.touches.length !== 1) return;
       const t = e.target.closest(".swipeable");
-      if (!t || e.target.closest(".check, .mod-add, .clip-open, .editable.editing")) return;
+      if (!t || e.target.closest(".check, .mod-add, .cat-add, .cat-chips, .clip-open, .editable.editing")) return;
       row = t; startX = e.touches[0].clientX; startY = e.touches[0].clientY; dx = 0; mode = null;
     }, { passive: true });
     document.body.addEventListener("touchmove", e => {
